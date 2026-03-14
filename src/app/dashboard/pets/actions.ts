@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { petSchema, type PetFormData } from "@/lib/validators/pet";
-import { Decimal } from "@/generated/prisma/client/runtime/library";
 
 const PAGE_SIZE = 20;
 
@@ -95,7 +94,7 @@ export async function createPet(data: PetFormData) {
       breed: parsed.data.breed || null,
       sex: parsed.data.sex,
       dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : null,
-      weight: parsed.data.weight ? new Decimal(parsed.data.weight) : null,
+      weight: parsed.data.weight ? parseFloat(parsed.data.weight) : null,
       color: parsed.data.color || null,
       microchipId: parsed.data.microchipId || null,
       allergies: parsed.data.allergies || null,
@@ -126,7 +125,7 @@ export async function updatePet(id: string, data: PetFormData) {
       breed: parsed.data.breed || null,
       sex: parsed.data.sex,
       dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : null,
-      weight: parsed.data.weight ? new Decimal(parsed.data.weight) : null,
+      weight: parsed.data.weight ? parseFloat(parsed.data.weight) : null,
       color: parsed.data.color || null,
       microchipId: parsed.data.microchipId || null,
       allergies: parsed.data.allergies || null,
