@@ -11,7 +11,7 @@ function createPrismaClient() {
     connectionString: process.env.POSTGRES_URL!,
     ssl: { rejectUnauthorized: false },
   });
-  const adapter = new PrismaPg({ pool });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 
