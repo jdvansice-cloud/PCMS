@@ -11,7 +11,8 @@ import {
   ShoppingCart,
   Users,
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { LogoLight } from "@/components/logo";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SignOutButton } from "./sign-out-button";
 
 const navigation = [
@@ -24,6 +25,11 @@ const navigation = [
   { name: "Inventario", href: "/dashboard/inventory", icon: Package },
   { name: "Servicios", href: "/dashboard/services", icon: ClipboardList },
 ];
+
+function getInitials(email: string): string {
+  const name = email.split("@")[0];
+  return name.slice(0, 2).toUpperCase();
+}
 
 export default async function DashboardLayout({
   children,
@@ -39,37 +45,52 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const initials = getInitials(user.email ?? "U");
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r bg-card">
-        <div className="flex h-16 items-center px-6">
-          <h1 className="text-xl font-bold">PCMS</h1>
+      <aside className="flex w-[260px] flex-col bg-[oklch(0.35_0.08_175)]">
+        {/* Logo */}
+        <div className="flex h-16 items-center px-5">
+          <LogoLight size="default" />
         </div>
-        <Separator />
+
+        {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 transition-all duration-200 hover:bg-white/10 hover:text-white"
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-[18px] w-[18px]" />
               {item.name}
             </Link>
           ))}
         </nav>
-        <Separator />
-        <div className="p-4">
-          <p className="mb-2 truncate text-xs text-muted-foreground">
-            {user.email}
-          </p>
+
+        {/* User section */}
+        <div className="border-t border-white/10 p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 bg-white/15 text-white">
+              <AvatarFallback className="bg-white/15 text-white text-xs font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-medium text-white/90">
+                {user.email}
+              </p>
+              <p className="text-xs text-white/50">Administrador</p>
+            </div>
+          </div>
           <SignOutButton />
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-background">
         <div className="p-8">{children}</div>
       </main>
     </div>
