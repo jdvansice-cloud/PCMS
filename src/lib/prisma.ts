@@ -6,11 +6,10 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  let connectionString = process.env.POSTGRES_URL!;
-  if (!connectionString.includes("sslmode=")) {
-    connectionString += (connectionString.includes("?") ? "&" : "?") + "sslmode=require";
-  }
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({
+    connectionString: process.env.POSTGRES_URL!,
+    ssl: { rejectUnauthorized: false },
+  });
   return new PrismaClient({ adapter });
 }
 
