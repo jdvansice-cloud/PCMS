@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Dog, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Dog, Edit, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -278,11 +278,15 @@ export function OwnerDetail({ owner }: { owner: Owner }) {
               <Badge variant="secondary">{owner.pets.length}</Badge>
             </div>
 
+            <Link href={`/dashboard/pets/new?ownerId=${owner.id}`}>
+              <Button variant="outline" size="sm" className="w-full gap-2 mb-4 border-dashed">
+                <Plus className="h-4 w-4" />
+                Agregar Mascota
+              </Button>
+            </Link>
+
             {owner.pets.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="rounded-full bg-muted p-3 mx-auto w-fit mb-3">
-                  <Dog className="h-5 w-5 text-muted-foreground/50" />
-                </div>
+              <div className="text-center py-4">
                 <p className="text-sm text-muted-foreground">
                   Sin mascotas registradas
                 </p>
