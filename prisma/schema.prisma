@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  VET
+  RECEPTIONIST
+  GROOMER
+}
+
+enum Species {
+  DOG
+  CAT
+  BIRD
+  REPTILE
+  RODENT
+  OTHER
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentType {
+  CONSULTATION
+  VACCINATION
+  SURGERY
+  GROOMING
+  FOLLOW_UP
+  EMERGENCY
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  YAPPY
+  BANK_TRANSFER
+}
+
+enum ProductCategory {
+  FOOD
+  MEDICATION
+  SUPPLEMENT
+  ACCESSORY
+  TOY
+  HYGIENE
+  OTHER
+}
+
+// ─── Organization ────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  ruc       String?  // Panama tax ID
+  logo      String?  // URL to logo in Supabase Storage
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users        User[]
+  owners       Owner[]
+  pets         Pet[]
+  services     Service[]
+  products     Product[]
+  appointments Appointment[]
+
+  @@map("organizations")
+}
+
+// ─── Staff / Users ───────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  authId         String   @unique @map("auth_id") // Supabase Auth UUID
+  organizationId String   @map("organization_id")
+  email          String
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  phone          String?
+  role           Role     @default(RECEPTIONIST)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  appointments Appointment[] @relation("AppointmentVet")
+
+  @@map("users")
+}
+
+// ─── Pet Owners (Clients) ────────────────────────────────
+
+model Owner {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  cedula         String?  // Panama national ID
+  ruc            String?  // Business tax ID (if applicable)
+  email          String?
+  phone          String?
+  whatsapp       String?  // WhatsApp number (may differ from phone)
+  address        String?
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  pets         Pet[]
+  appointments Appointment[]
+
+  @@map("owners")
+}
+
+// ─── Pets (Patients) ─────────────────────────────────────
+
+model Pet {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  ownerId        String   @map("owner_id")
+  name           String
+  species        Species  @default(DOG)
+  breed          String?
+  sex            Sex      @default(UNKNOWN)
+  dateOfBirth    DateTime? @map("date_of_birth")
+  weight         Decimal?  @db.Decimal(5, 2) // kg
+  color          String?
+  microchipId    String?  @map("microchip_id")
+  photoUrl       String?  @map("photo_url")
+  allergies      String?
+  notes          String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  owner        Owner         @relation(fields: [ownerId], references: [id])
+  appointments Appointment[]
+
+  @@map("pets")
+}
+
+// ─── Services ────────────────────────────────────────────
+
+model Service {
+  id             String          @id @default(cuid())
+  organizationId String          @map("organization_id")
+  name           String
+  description    String?
+  price          Decimal         @db.Decimal(10, 2) // ITBMS-inclusive final price
+  isTaxExempt    Boolean         @default(false) @map("is_tax_exempt")
+  type           AppointmentType @default(CONSULTATION)
+  durationMin    Int             @default(30) @map("duration_min") // duration in minutes
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("services")
+}
+
+// ─── Products (Pet Shop Inventory) ───────────────────────
+
+model Product {
+  id             String          @id @default(cuid())
+  organizationId String          @map("organization_id")
+  name           String
+  description    String?
+  sku            String?
+  barcode        String?
+  category       ProductCategory @default(OTHER)
+  price          Decimal         @db.Decimal(10, 2) // ITBMS-inclusive final price
+  cost           Decimal?        @db.Decimal(10, 2) // Supplier cost
+  isTaxExempt    Boolean         @default(false) @map("is_tax_exempt")
+  stock          Int             @default(0)
+  minStock       Int             @default(0) @map("min_stock") // Low stock alert threshold
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("products")
+}
+
+// ─── Appointments ────────────────────────────────────────
+
+model Appointment {
+  id             String            @id @default(cuid())
+  organizationId String            @map("organization_id")
+  ownerId        String            @map("owner_id")
+  petId          String            @map("pet_id")
+  vetId          String?           @map("vet_id")
+  type           AppointmentType   @default(CONSULTATION)
+  status         AppointmentStatus @default(SCHEDULED)
+  scheduledAt    DateTime          @map("scheduled_at")
+  durationMin    Int               @default(30) @map("duration_min")
+  reason         String?
+  notes          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  owner        Owner        @relation(fields: [ownerId], references: [id])
+  pet          Pet          @relation(fields: [petId], references: [id])
+  vet          User?        @relation("AppointmentVet", fields: [vetId], references: [id])
+
+  @@map("appointments")
+}
