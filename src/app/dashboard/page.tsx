@@ -10,49 +10,21 @@ import {
   PawPrint,
 } from "lucide-react";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-const stats = [
-  {
-    label: "Clientes",
-    value: "0",
-    subtitle: "Total registrados",
-    icon: Users,
-    color: "bg-[oklch(0.92_0.04_175)]",
-    iconColor: "text-[oklch(0.50_0.12_175)]",
-  },
-  {
-    label: "Mascotas",
-    value: "0",
-    subtitle: "Pacientes activos",
-    icon: Dog,
-    color: "bg-[oklch(0.92_0.06_55)]",
-    iconColor: "text-[oklch(0.60_0.14_55)]",
-  },
-  {
-    label: "Citas Hoy",
-    value: "0",
-    subtitle: "Programadas",
-    icon: Calendar,
-    color: "bg-[oklch(0.92_0.06_300)]",
-    iconColor: "text-[oklch(0.55_0.15_300)]",
-  },
-  {
-    label: "Ventas Hoy",
-    value: "$0.00",
-    subtitle: "Ingresos del día",
-    icon: ShoppingCart,
-    color: "bg-[oklch(0.92_0.06_230)]",
-    iconColor: "text-[oklch(0.55_0.15_230)]",
-  },
-];
+async function getDashboardStats(organizationId: string) {
+  const [ownerCount, petCount] = await Promise.all([
+    prisma.owner.count({ where: { organizationId } }),
+    prisma.pet.count({ where: { organizationId, isActive: true } }),
+  ]);
+  return { ownerCount, petCount };
+}
 
-const quickActions = [
-  { label: "Nuevo Cliente", href: "/dashboard/owners", icon: Users },
-  { label: "Nueva Cita", href: "/dashboard/appointments", icon: Calendar },
-  { label: "Nueva Venta", href: "/dashboard/pos", icon: ShoppingCart },
-];
+export default async function DashboardPage() {
+  const { organizationId } = await getCurrentUser();
+  const { ownerCount, petCount } = await getDashboardStats(organizationId);
 
-export default function DashboardPage() {
   const now = new Date();
   const greeting = getGreeting(now);
   const dateStr = now.toLocaleDateString("es-PA", {
@@ -61,6 +33,47 @@ export default function DashboardPage() {
     month: "long",
     day: "numeric",
   });
+
+  const stats = [
+    {
+      label: "Clientes",
+      value: String(ownerCount),
+      subtitle: "Total registrados",
+      icon: Users,
+      color: "bg-[oklch(0.92_0.04_175)]",
+      iconColor: "text-[oklch(0.50_0.12_175)]",
+    },
+    {
+      label: "Mascotas",
+      value: String(petCount),
+      subtitle: "Pacientes activos",
+      icon: Dog,
+      color: "bg-[oklch(0.92_0.06_55)]",
+      iconColor: "text-[oklch(0.60_0.14_55)]",
+    },
+    {
+      label: "Citas Hoy",
+      value: "0",
+      subtitle: "Programadas",
+      icon: Calendar,
+      color: "bg-[oklch(0.92_0.06_300)]",
+      iconColor: "text-[oklch(0.55_0.15_300)]",
+    },
+    {
+      label: "Ventas Hoy",
+      value: "$0.00",
+      subtitle: "Ingresos del día",
+      icon: ShoppingCart,
+      color: "bg-[oklch(0.92_0.06_230)]",
+      iconColor: "text-[oklch(0.55_0.15_230)]",
+    },
+  ];
+
+  const quickActions = [
+    { label: "Nuevo Cliente", href: "/dashboard/owners/new", icon: Users },
+    { label: "Nueva Cita", href: "/dashboard/appointments", icon: Calendar },
+    { label: "Nueva Venta", href: "/dashboard/pos", icon: ShoppingCart },
+  ];
 
   return (
     <div className="space-y-8">
