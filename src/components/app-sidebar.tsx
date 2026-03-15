@@ -107,11 +107,23 @@ export function AppSidebar({ slug }: { slug: string }) {
               key={item.nameKey}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium transition-all duration-150 ${
-                active
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/8 hover:text-white/90"
-              }`}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium transition-all duration-150"
+              style={{
+                backgroundColor: active ? "var(--brand-sidebar-active, rgba(255,255,255,0.15))" : undefined,
+                color: active ? "#fff" : "rgba(255,255,255,0.6)",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.backgroundColor = "var(--brand-sidebar-hover, rgba(255,255,255,0.08))";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.6)";
+                }
+              }}
               title={collapsed ? t(item.nameKey) : undefined}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
@@ -164,7 +176,8 @@ export function AppSidebar({ slug }: { slug: string }) {
         <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <aside
-            className="relative flex w-[260px] h-full flex-col bg-[oklch(0.35_0.08_175)]"
+            className="relative flex w-[260px] h-full flex-col"
+            style={{ backgroundColor: "var(--brand-sidebar, oklch(0.35 0.08 175))" }}
             onClick={(e) => e.stopPropagation()}
           >
             {sidebarContent}
@@ -174,9 +187,10 @@ export function AppSidebar({ slug }: { slug: string }) {
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden lg:flex flex-col bg-[oklch(0.35_0.08_175)] transition-all duration-200 ${
+        className={`hidden lg:flex flex-col transition-all duration-200 ${
           collapsed ? "w-16" : "w-[240px]"
         }`}
+        style={{ backgroundColor: "var(--brand-sidebar, oklch(0.35 0.08 175))" }}
       >
         {sidebarContent}
       </aside>
