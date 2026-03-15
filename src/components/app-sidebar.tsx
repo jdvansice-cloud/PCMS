@@ -80,7 +80,7 @@ export function AppSidebar({ slug }: { slug: string }) {
             </div>
           )}
           {!collapsed && (
-            <span className="text-white font-semibold text-sm truncate max-w-[140px]">
+            <span className="text-white font-semibold text-base truncate max-w-[140px]">
               {organization.name}
             </span>
           )}
@@ -107,7 +107,7 @@ export function AppSidebar({ slug }: { slug: string }) {
               key={item.nameKey}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium transition-all duration-150 ${
                 active
                   ? "bg-white/15 text-white"
                   : "text-white/60 hover:bg-white/8 hover:text-white/90"
@@ -129,10 +129,10 @@ export function AppSidebar({ slug }: { slug: string }) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-xs font-medium text-white/90">
+              <p className="truncate text-sm font-medium text-white/90">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="truncate text-[10px] text-white/40">{user.email}</p>
+              <p className="truncate text-xs text-white/40">{user.email}</p>
             </div>
           )}
         </div>
@@ -156,7 +156,7 @@ export function AppSidebar({ slug }: { slug: string }) {
         <button onClick={() => setMobileOpen(true)}>
           <Menu className="h-5 w-5" />
         </button>
-        <span className="font-semibold text-sm truncate">{organization.name}</span>
+        <span className="font-semibold text-base truncate">{organization.name}</span>
       </div>
 
       {/* Mobile overlay */}
