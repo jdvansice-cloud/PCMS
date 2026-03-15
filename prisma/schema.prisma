@@ -1,19 +1,57 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ─── Enums ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  ENUMS
+// ═══════════════════════════════════════════════════════════
 
-enum Role {
+enum Plan {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PAUSED
+}
+
+enum UserType {
+  OWNER
   ADMIN
-  VET
-  RECEPTIONIST
-  GROOMER
+  STAFF
+}
+
+enum Section {
+  DASHBOARD
+  CLIENTS
+  PETS
+  APPOINTMENTS
+  MEDICAL_RECORDS
+  GROOMING
+  POS
+  INVENTORY
+  SERVICES
+  REPORTS
+  SETTINGS
+  USERS
+  AUDIT_LOG
 }
 
 enum Species {
@@ -67,194 +105,807 @@ enum ProductCategory {
   OTHER
 }
 
-// ─── Organization ────────────────────────────────────────
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum SaleStatus {
+  COMPLETED
+  PARTIAL
+  REFUNDED
+  VOIDED
+}
+
+enum POStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum GroomingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum KennelSize {
+  SMALL
+  MEDIUM
+  LARGE
+  XL
+}
+
+enum StayStatus {
+  ACTIVE
+  DISCHARGED
+  TRANSFERRED
+  DECEASED
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SOFT_DELETE
+  RESTORE
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PLATFORM (Super Admin)
+// ═══════════════════════════════════════════════════════════
+
+model PlatformAdmin {
+  id        String   @id @default(cuid())
+  authId    String   @unique @map("auth_id")
+  email     String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("platform_admins")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ORGANIZATION (Tenant)
+// ═══════════════════════════════════════════════════════════
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  ruc       String?  // Panama tax ID
-  logo      String?  // URL to logo in Supabase Storage
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  ruc         String?
+  dv          String?
+  phone       String?
+  email       String?
+  address     String?
+  website     String?
+  logo        String?
+  favicon     String?
+  timezone    String   @default("America/Panama")
+  currency    String   @default("USD")
+  locale      String   @default("es")
+  isActive    Boolean  @default(true) @map("is_active")
+  trialEndsAt DateTime? @map("trial_ends_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users        User[]
-  owners       Owner[]
-  pets         Pet[]
-  services     Service[]
-  products     Product[]
-  appointments Appointment[]
-  sales        Sale[]
+  subscription    Subscription?
+  branding        OrganizationBranding?
+  branches        Branch[]
+  users           User[]
+  roles           Role[]
+  owners          Owner[]
+  pets            Pet[]
+  services        Service[]
+  products        Product[]
+  appointments    Appointment[]
+  sales           Sale[]
+  suppliers       Supplier[]
+  purchaseOrders  PurchaseOrder[]
+  medications     Medication[]
+  medicalRecords  MedicalRecord[]
+  vaccinations    Vaccination[]
+  groomingSessions GroomingSession[]
+  kennels         Kennel[]
+  kennelStays     KennelStay[]
+  emailTemplates  EmailTemplate[]
+  emailLogs       EmailLog[]
+  auditLogs       AuditLog[]
 
   @@map("organizations")
 }
 
-// ─── Staff / Users ───────────────────────────────────────
+model OrganizationBranding {
+  id             String  @id @default(cuid())
+  organizationId String  @unique @map("organization_id")
+  primaryColor   String  @default("#14b8a6") @map("primary_color")
+  secondaryColor String  @default("#fb923c") @map("secondary_color")
+  accentColor    String? @map("accent_color")
+  sidebarColor   String? @map("sidebar_color")
+  fontFamily     String  @default("Geist") @map("font_family")
+  darkMode       Boolean @default(false) @map("dark_mode")
+  customLoginBg  String? @map("custom_login_bg")
 
-model User {
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_brandings")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SUBSCRIPTION / BILLING
+// ═══════════════════════════════════════════════════════════
+
+model Subscription {
+  id               String       @id @default(cuid())
+  organizationId   String       @unique @map("organization_id")
+  stripeCustomerId String?      @unique @map("stripe_customer_id")
+  stripeSubId      String?      @unique @map("stripe_sub_id")
+  plan             Plan         @default(TRIAL)
+  billingCycle     BillingCycle @default(MONTHLY) @map("billing_cycle")
+  status           SubStatus    @default(TRIALING)
+  currentPeriodEnd DateTime?    @map("current_period_end")
+  extraUsers       Int          @default(0) @map("extra_users")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BRANCHES
+// ═══════════════════════════════════════════════════════════
+
+model Branch {
   id             String   @id @default(cuid())
-  authId         String   @unique @map("auth_id") // Supabase Auth UUID
   organizationId String   @map("organization_id")
-  email          String
-  firstName      String   @map("first_name")
-  lastName       String   @map("last_name")
+  name           String
   phone          String?
-  role           Role     @default(RECEPTIONIST)
+  email          String?
+  address        String?
+  isMain         Boolean  @default(false) @map("is_main")
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  appointments Appointment[] @relation("AppointmentVet")
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businessHours  BusinessHours[]
+  staffSchedules StaffSchedule[]
+  users          User[]
+  appointments   Appointment[]
+  sales          Sale[]
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  groomingSessions GroomingSession[]
+  kennels        Kennel[]
+  kennelStays    KennelStay[]
 
+  @@map("branches")
+}
+
+model BusinessHours {
+  id        String  @id @default(cuid())
+  branchId  String  @map("branch_id")
+  dayOfWeek Int     @map("day_of_week")
+  openTime  String  @map("open_time")
+  closeTime String  @map("close_time")
+  isClosed  Boolean @default(false) @map("is_closed")
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, dayOfWeek])
+  @@map("business_hours")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  USERS, ROLES & PERMISSIONS
+// ═══════════════════════════════════════════════════════════
+
+model User {
+  id             String   @id @default(cuid())
+  authId         String   @unique @map("auth_id")
+  organizationId String   @map("organization_id")
+  branchId       String?  @map("branch_id")
+  email          String
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  phone          String?
+  avatar         String?
+  userType       UserType @default(STAFF) @map("user_type")
+  roleId         String?  @map("role_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  role             Role?             @relation(fields: [roleId], references: [id])
+  staffSchedules   StaffSchedule[]
+  staffTimeOffs    StaffTimeOff[]
+  vetAppointments  Appointment[]     @relation("AppointmentVet")
+  medicalRecords   MedicalRecord[]   @relation("MedicalRecordVet")
+  vaccinations     Vaccination[]     @relation("VaccinationVet")
+  groomingSessions GroomingSession[] @relation("GroomingGroomer")
+  refundsProcessed Refund[]          @relation("RefundProcessor")
+  kennelDailyLogs  KennelDailyLog[]  @relation("KennelLogUser")
+
+  @@index([organizationId])
   @@map("users")
 }
 
-// ─── Pet Owners (Clients) ────────────────────────────────
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?
+  isSystem       Boolean  @default(false) @map("is_system")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions  RolePermission[]
+  users        User[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  id        String  @id @default(cuid())
+  roleId    String  @map("role_id")
+  section   Section
+  canView   Boolean @default(false) @map("can_view")
+  canCreate Boolean @default(false) @map("can_create")
+  canEdit   Boolean @default(false) @map("can_edit")
+  canDelete Boolean @default(false) @map("can_delete")
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, section])
+  @@map("role_permissions")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STAFF SCHEDULING
+// ═══════════════════════════════════════════════════════════
+
+model StaffSchedule {
+  id        String  @id @default(cuid())
+  userId    String  @map("user_id")
+  branchId  String  @map("branch_id")
+  dayOfWeek Int     @map("day_of_week")
+  startTime String  @map("start_time")
+  endTime   String  @map("end_time")
+  isOff     Boolean @default(false) @map("is_off")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId, dayOfWeek])
+  @@map("staff_schedules")
+}
+
+model StaffTimeOff {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staff_time_off")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLIENTS (Pet Owners)
+// ═══════════════════════════════════════════════════════════
 
 model Owner {
   id             String   @id @default(cuid())
   organizationId String   @map("organization_id")
   firstName      String   @map("first_name")
   lastName       String   @map("last_name")
-  cedula         String?  // Panama national ID
-  ruc            String?  // Business tax ID (if applicable)
+  cedula         String?
+  ruc            String?
   email          String?
   phone          String?
-  whatsapp       String?  // WhatsApp number (may differ from phone)
+  whatsapp       String?
   address        String?
-  notes          String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  pets         Pet[]
-  appointments Appointment[]
-  sales        Sale[]
-
-  @@map("owners")
-}
-
-// ─── Pets (Patients) ─────────────────────────────────────
-
-model Pet {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
-  ownerId        String   @map("owner_id")
-  name           String
-  species        Species  @default(DOG)
-  breed          String?
-  sex            Sex      @default(UNKNOWN)
-  dateOfBirth    DateTime? @map("date_of_birth")
-  weight         Decimal?  @db.Decimal(5, 2) // kg
-  color          String?
-  microchipId    String?  @map("microchip_id")
-  photoUrl       String?  @map("photo_url")
-  allergies      String?
   notes          String?
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  owner        Owner         @relation(fields: [ownerId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pets         Pet[]
   appointments Appointment[]
+  sales        Sale[]
 
+  @@index([organizationId])
+  @@map("owners")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PETS (Patients)
+// ═══════════════════════════════════════════════════════════
+
+model Pet {
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
+  ownerId        String    @map("owner_id")
+  name           String
+  species        Species   @default(DOG)
+  breed          String?
+  sex            Sex       @default(UNKNOWN)
+  dateOfBirth    DateTime? @map("date_of_birth")
+  weight         Decimal?  @db.Decimal(5, 2)
+  color          String?
+  microchipId    String?   @map("microchip_id")
+  photoUrl       String?   @map("photo_url")
+  allergies      String?
+  notes          String?
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner            Owner             @relation(fields: [ownerId], references: [id])
+  appointments     Appointment[]
+  medicalRecords   MedicalRecord[]
+  vaccinations     Vaccination[]
+  groomingSessions GroomingSession[]
+  kennelStays      KennelStay[]
+
+  @@index([organizationId])
+  @@index([ownerId])
   @@map("pets")
 }
 
-// ─── Services ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  SERVICES
+// ═══════════════════════════════════════════════════════════
 
 model Service {
   id             String          @id @default(cuid())
   organizationId String          @map("organization_id")
   name           String
   description    String?
-  price          Decimal         @db.Decimal(10, 2) // ITBMS-inclusive final price
+  price          Decimal         @db.Decimal(10, 2)
   isTaxExempt    Boolean         @default(false) @map("is_tax_exempt")
   type           AppointmentType @default(CONSULTATION)
-  durationMin    Int             @default(30) @map("duration_min") // duration in minutes
+  durationMin    Int             @default(30) @map("duration_min")
+  isBookable     Boolean         @default(true) @map("is_bookable")
   isActive       Boolean         @default(true) @map("is_active")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   saleLines    SaleLine[]
+  appointments Appointment[]
 
+  @@index([organizationId])
   @@map("services")
 }
 
-// ─── Products (Pet Shop Inventory) ───────────────────────
+// ═══════════════════════════════════════════════════════════
+//  PRODUCTS & INVENTORY
+// ═══════════════════════════════════════════════════════════
 
 model Product {
   id             String          @id @default(cuid())
   organizationId String          @map("organization_id")
+  branchId       String?         @map("branch_id")
+  supplierId     String?         @map("supplier_id")
   name           String
   description    String?
   sku            String?
   barcode        String?
   category       ProductCategory @default(OTHER)
-  price          Decimal         @db.Decimal(10, 2) // ITBMS-inclusive final price
-  cost           Decimal?        @db.Decimal(10, 2) // Supplier cost
+  price          Decimal         @db.Decimal(10, 2)
+  cost           Decimal?        @db.Decimal(10, 2)
   isTaxExempt    Boolean         @default(false) @map("is_tax_exempt")
   stock          Int             @default(0)
-  minStock       Int             @default(0) @map("min_stock") // Low stock alert threshold
+  minStock       Int             @default(0) @map("min_stock")
+  expirationDate DateTime?       @map("expiration_date")
+  batchNumber    String?         @map("batch_number")
   isActive       Boolean         @default(true) @map("is_active")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  supplier     Supplier?    @relation(fields: [supplierId], references: [id])
   saleLines    SaleLine[]
+  poLines      PurchaseOrderLine[]
 
+  @@index([organizationId])
   @@map("products")
 }
 
-// ─── Appointments ────────────────────────────────────────
+model Supplier {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String
+  contactName    String?  @map("contact_name")
+  email          String?
+  phone          String?
+  address        String?
+  notes          String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  supplierId     String   @map("supplier_id")
+  branchId       String   @map("branch_id")
+  orderNumber    Int      @map("order_number")
+  status         POStatus @default(DRAFT)
+  totalAmount    Decimal  @db.Decimal(10, 2) @map("total_amount")
+  notes          String?
+  orderedAt      DateTime? @map("ordered_at")
+  receivedAt     DateTime? @map("received_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier     Supplier             @relation(fields: [supplierId], references: [id])
+  branch       Branch               @relation(fields: [branchId], references: [id])
+  lines        PurchaseOrderLine[]
+
+  @@index([organizationId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id              String  @id @default(cuid())
+  purchaseOrderId String  @map("purchase_order_id")
+  productId       String  @map("product_id")
+  quantity        Int
+  unitCost        Decimal @db.Decimal(10, 2) @map("unit_cost")
+  receivedQty     Int     @default(0) @map("received_qty")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_lines")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  APPOINTMENTS
+// ═══════════════════════════════════════════════════════════
 
 model Appointment {
-  id             String            @id @default(cuid())
-  organizationId String            @map("organization_id")
-  ownerId        String            @map("owner_id")
-  petId          String            @map("pet_id")
-  vetId          String?           @map("vet_id")
-  type           AppointmentType   @default(CONSULTATION)
-  status         AppointmentStatus @default(SCHEDULED)
-  scheduledAt    DateTime          @map("scheduled_at")
-  durationMin    Int               @default(30) @map("duration_min")
-  reason         String?
-  notes          String?
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
+  id              String            @id @default(cuid())
+  organizationId  String            @map("organization_id")
+  branchId        String            @map("branch_id")
+  ownerId         String            @map("owner_id")
+  petId           String            @map("pet_id")
+  vetId           String?           @map("vet_id")
+  serviceId       String?           @map("service_id")
+  type            AppointmentType   @default(CONSULTATION)
+  status          AppointmentStatus @default(SCHEDULED)
+  scheduledAt     DateTime          @map("scheduled_at")
+  durationMin     Int               @default(30) @map("duration_min")
+  reason          String?
+  notes           String?
+  isPublicBooking Boolean           @default(false) @map("is_public_booking")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  owner        Owner        @relation(fields: [ownerId], references: [id])
-  pet          Pet          @relation(fields: [petId], references: [id])
-  vet          User?        @relation("AppointmentVet", fields: [vetId], references: [id])
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  owner         Owner          @relation(fields: [ownerId], references: [id])
+  pet           Pet            @relation(fields: [petId], references: [id])
+  vet           User?          @relation("AppointmentVet", fields: [vetId], references: [id])
+  service       Service?       @relation(fields: [serviceId], references: [id])
+  medicalRecord MedicalRecord?
 
+  @@index([organizationId, scheduledAt])
+  @@index([branchId, scheduledAt])
   @@map("appointments")
 }
 
-// ─── Sales (POS) ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  MEDICAL RECORDS
+// ═══════════════════════════════════════════════════════════
+
+model MedicalRecord {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  petId          String   @map("pet_id")
+  appointmentId  String?  @unique @map("appointment_id")
+  vetId          String   @map("vet_id")
+  subjective     String?
+  objective      String?
+  assessment     String?
+  plan           String?
+  weightKg       Decimal? @db.Decimal(5, 2) @map("weight_kg")
+  tempCelsius    Decimal? @db.Decimal(4, 1) @map("temp_celsius")
+  heartRate      Int?     @map("heart_rate")
+  respRate       Int?     @map("resp_rate")
+  bodyScore      Int?     @map("body_score")
+  diagnosis      String?
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pet           Pet                @relation(fields: [petId], references: [id])
+  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
+  vet           User               @relation("MedicalRecordVet", fields: [vetId], references: [id])
+  prescriptions Prescription[]
+  labResults    LabResult[]
+  surgicalNotes SurgicalNote[]
+  attachments   RecordAttachment[]
+
+  @@index([organizationId])
+  @@index([petId])
+  @@map("medical_records")
+}
+
+model Prescription {
+  id              String   @id @default(cuid())
+  medicalRecordId String   @map("medical_record_id")
+  medicationId    String?  @map("medication_id")
+  medicationName  String   @map("medication_name")
+  dosage          String
+  frequency       String
+  duration        String
+  route           String?
+  instructions    String?
+  quantity        Int?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  medication    Medication?   @relation(fields: [medicationId], references: [id])
+
+  @@map("prescriptions")
+}
+
+model Medication {
+  id                String   @id @default(cuid())
+  organizationId    String   @map("organization_id")
+  name              String
+  genericName       String?  @map("generic_name")
+  category          String?
+  species           String[]
+  defaultDosage     String?  @map("default_dosage")
+  defaultRoute      String?  @map("default_route")
+  contraindications String?
+  notes             String?
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+
+  @@index([organizationId])
+  @@map("medications")
+}
+
+model Vaccination {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  petId          String   @map("pet_id")
+  vetId          String   @map("vet_id")
+  vaccineName    String   @map("vaccine_name")
+  manufacturer   String?
+  batchNumber    String?  @map("batch_number")
+  administeredAt DateTime @map("administered_at")
+  nextDueDate    DateTime? @map("next_due_date")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pet          Pet          @relation(fields: [petId], references: [id])
+  vet          User         @relation("VaccinationVet", fields: [vetId], references: [id])
+
+  @@index([organizationId])
+  @@index([petId])
+  @@map("vaccinations")
+}
+
+model LabResult {
+  id              String   @id @default(cuid())
+  medicalRecordId String   @map("medical_record_id")
+  testName        String   @map("test_name")
+  result          String?
+  normalRange     String?  @map("normal_range")
+  unit            String?
+  isAbnormal      Boolean  @default(false) @map("is_abnormal")
+  fileUrl         String?  @map("file_url")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@map("lab_results")
+}
+
+model SurgicalNote {
+  id              String    @id @default(cuid())
+  medicalRecordId String    @map("medical_record_id")
+  procedure       String
+  anesthesiaType  String?   @map("anesthesia_type")
+  anesthesiaStart DateTime? @map("anesthesia_start")
+  anesthesiaEnd   DateTime? @map("anesthesia_end")
+  complications   String?
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@map("surgical_notes")
+}
+
+model RecordAttachment {
+  id              String   @id @default(cuid())
+  medicalRecordId String   @map("medical_record_id")
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileType        String   @map("file_type")
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@map("record_attachments")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GROOMING
+// ═══════════════════════════════════════════════════════════
+
+model GroomingSession {
+  id                  String         @id @default(cuid())
+  organizationId      String         @map("organization_id")
+  branchId            String         @map("branch_id")
+  petId               String         @map("pet_id")
+  groomerId           String         @map("groomer_id")
+  appointmentId       String?        @map("appointment_id")
+  status              GroomingStatus @default(PENDING)
+  scheduledAt         DateTime       @map("scheduled_at")
+  startedAt           DateTime?      @map("started_at")
+  completedAt         DateTime?      @map("completed_at")
+  services            String[]
+  skinCondition       String?        @map("skin_condition")
+  matting             String?
+  specialInstructions String?        @map("special_instructions")
+  notes               String?
+  beforePhotoUrl      String?        @map("before_photo_url")
+  afterPhotoUrl       String?        @map("after_photo_url")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  pet          Pet          @relation(fields: [petId], references: [id])
+  groomer      User         @relation("GroomingGroomer", fields: [groomerId], references: [id])
+
+  @@index([organizationId])
+  @@index([branchId, scheduledAt])
+  @@map("grooming_sessions")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  KENNEL / HOSPITALIZATION
+// ═══════════════════════════════════════════════════════════
+
+model Kennel {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  branchId       String      @map("branch_id")
+  name           String
+  size           KennelSize  @default(MEDIUM)
+  species        Species?
+  isAvailable    Boolean     @default(true) @map("is_available")
+  notes          String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  stays        KennelStay[]
+
+  @@map("kennels")
+}
+
+model KennelStay {
+  id              String     @id @default(cuid())
+  organizationId  String     @map("organization_id")
+  kennelId        String     @map("kennel_id")
+  petId           String     @map("pet_id")
+  reason          String
+  admittedAt      DateTime   @map("admitted_at")
+  dischargedAt    DateTime?  @map("discharged_at")
+  status          StayStatus @default(ACTIVE)
+  feedingSchedule String?    @map("feeding_schedule")
+  specialCare     String?    @map("special_care")
+  notes           String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  kennel       Kennel           @relation(fields: [kennelId], references: [id])
+  pet          Pet              @relation(fields: [petId], references: [id])
+  dailyLogs    KennelDailyLog[]
+
+  @@index([organizationId])
+  @@map("kennel_stays")
+}
+
+model KennelDailyLog {
+  id          String   @id @default(cuid())
+  stayId      String   @map("stay_id")
+  loggedById  String   @map("logged_by_id")
+  date        DateTime
+  feeding     String?
+  medication  String?
+  temperature Decimal? @db.Decimal(4, 1)
+  weight      Decimal? @db.Decimal(5, 2)
+  behavior    String?
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  stay     KennelStay @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  loggedBy User       @relation("KennelLogUser", fields: [loggedById], references: [id])
+
+  @@map("kennel_daily_logs")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  POS / SALES
+// ═══════════════════════════════════════════════════════════
 
 model Sale {
-  id             String        @id @default(cuid())
-  organizationId String        @map("organization_id")
-  ownerId        String?       @map("owner_id")
-  saleNumber     Int           @map("sale_number")
-  subtotal       Decimal       @db.Decimal(10, 2)
-  itbms          Decimal       @db.Decimal(10, 2)
-  total          Decimal       @db.Decimal(10, 2)
-  paymentMethod  PaymentMethod @default(CASH)
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  branchId       String      @map("branch_id")
+  ownerId        String?     @map("owner_id")
+  saleNumber     Int         @map("sale_number")
+  subtotal       Decimal     @db.Decimal(10, 2)
+  itbms          Decimal     @db.Decimal(10, 2)
+  discountAmount Decimal?    @db.Decimal(10, 2) @map("discount_amount")
+  discountType   DiscountType? @map("discount_type")
+  total          Decimal     @db.Decimal(10, 2)
+  balanceDue     Decimal     @default(0) @db.Decimal(10, 2) @map("balance_due")
+  status         SaleStatus  @default(COMPLETED)
   notes          String?
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  owner        Owner?       @relation(fields: [ownerId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  owner        Owner?        @relation(fields: [ownerId], references: [id])
   lines        SaleLine[]
+  payments     SalePayment[]
+  refunds      Refund[]
 
+  @@index([organizationId, createdAt])
+  @@index([branchId, createdAt])
   @@map("sales")
 }
 
@@ -276,4 +927,94 @@ model SaleLine {
   service Service? @relation(fields: [serviceId], references: [id])
 
   @@map("sale_lines")
+}
+
+model SalePayment {
+  id            String        @id @default(cuid())
+  saleId        String        @map("sale_id")
+  paymentMethod PaymentMethod @map("payment_method")
+  amount        Decimal       @db.Decimal(10, 2)
+  reference     String?
+  paidAt        DateTime      @default(now()) @map("paid_at")
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
+model Refund {
+  id            String   @id @default(cuid())
+  saleId        String   @map("sale_id")
+  amount        Decimal  @db.Decimal(10, 2)
+  reason        String?
+  processedById String   @map("processed_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  sale        Sale @relation(fields: [saleId], references: [id])
+  processedBy User @relation("RefundProcessor", fields: [processedById], references: [id])
+
+  @@map("refunds")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EMAIL TEMPLATES & LOGS
+// ═══════════════════════════════════════════════════════════
+
+model EmailTemplate {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String
+  slug           String
+  subject        String
+  bodyHtml       String   @map("body_html")
+  bodyJson       String?  @map("body_json")
+  variables      String[]
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  templateId     String?     @map("template_id")
+  recipientEmail String      @map("recipient_email")
+  subject        String
+  status         EmailStatus @default(QUEUED)
+  sentAt         DateTime?   @map("sent_at")
+  resendId       String?     @map("resend_id")
+  error          String?
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("email_logs")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AUDIT LOG
+// ═══════════════════════════════════════════════════════════
+
+model AuditLog {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  userId         String?     @map("user_id")
+  action         AuditAction
+  entityType     String      @map("entity_type")
+  entityId       String      @map("entity_id")
+  changes        Json?
+  metadata       Json?
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
 }

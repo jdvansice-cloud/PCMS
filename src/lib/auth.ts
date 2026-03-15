@@ -1,8 +1,28 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import type { UserType } from "@/generated/prisma/client";
 
-export async function getCurrentUser() {
+export type AuthUser = {
+  id: string;
+  authId: string;
+  organizationId: string;
+  branchId: string | null;
+  email: string;
+  firstName: string;
+  lastName: string;
+  userType: UserType;
+  roleId: string | null;
+  isActive: boolean;
+};
+
+export type AuthContext = {
+  user: AuthUser;
+  organizationId: string;
+  slug: string;
+};
+
+export async function getCurrentUser(): Promise<AuthContext> {
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -12,35 +32,56 @@ export async function getCurrentUser() {
     redirect("/login");
   }
 
-  // Look up the Prisma User by Supabase Auth ID
-  let dbUser = await prisma.user.findUnique({
+  const dbUser = await prisma.user.findUnique({
     where: { authId: authUser.id },
+    select: {
+      id: true,
+      authId: true,
+      organizationId: true,
+      branchId: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      userType: true,
+      roleId: true,
+      isActive: true,
+      organization: { select: { slug: true, isActive: true } },
+    },
   });
 
-  // Auto-provision: create Organization + User on first login
-  if (!dbUser) {
-    const org = await prisma.organization.create({
-      data: {
-        name: "Mi Clínica",
-        updatedAt: new Date(),
-      },
-    });
-
-    dbUser = await prisma.user.create({
-      data: {
-        authId: authUser.id,
-        organizationId: org.id,
-        email: authUser.email ?? "",
-        firstName: authUser.email?.split("@")[0] ?? "Admin",
-        lastName: "",
-        role: "ADMIN",
-        updatedAt: new Date(),
-      },
-    });
+  if (!dbUser || !dbUser.isActive || !dbUser.organization.isActive) {
+    redirect("/login");
   }
 
   return {
-    user: dbUser,
+    user: {
+      id: dbUser.id,
+      authId: dbUser.authId,
+      organizationId: dbUser.organizationId,
+      branchId: dbUser.branchId,
+      email: dbUser.email,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      userType: dbUser.userType,
+      roleId: dbUser.roleId,
+      isActive: dbUser.isActive,
+    },
     organizationId: dbUser.organizationId,
+    slug: dbUser.organization.slug,
   };
+}
+
+export async function isPlatformAdmin(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return false;
+
+  const admin = await prisma.platformAdmin.findUnique({
+    where: { authId: authUser.id },
+  });
+
+  return !!admin;
 }
