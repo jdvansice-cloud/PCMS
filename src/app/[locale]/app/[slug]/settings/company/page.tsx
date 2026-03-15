@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { getCompanyInfo, updateCompanyInfo } from "../actions";
@@ -18,7 +19,7 @@ export default function CompanySettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({
-    name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "",
+    name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "", locale: "es" as string,
   });
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function CompanySettingsPage() {
           email: info.email ?? "",
           address: info.address ?? "",
           website: info.website ?? "",
+          locale: info.locale ?? "es",
         });
       }
     });
@@ -87,6 +89,21 @@ export default function CompanySettingsPage() {
               <div className="space-y-1.5">
                 <Label>Sitio Web</Label>
                 <Input value={data.website} onChange={(e) => setData({ ...data, website: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Idioma predeterminado</Label>
+                <Select value={data.locale ?? "es"} onValueChange={(val) => setData({ ...data, locale: val ?? "es" })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar idioma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Idioma de la interfaz para todos los usuarios de esta organización
+                </p>
               </div>
             </div>
             <div className="space-y-1.5">

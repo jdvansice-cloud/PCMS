@@ -34,6 +34,7 @@ export async function updateCompanyInfo(data: {
   email?: string;
   address?: string;
   website?: string;
+  locale?: string;
 }) {
   const { user, organizationId, slug } = await getCurrentUser();
 
@@ -51,13 +52,14 @@ export async function updateCompanyInfo(data: {
       email: data.email || null,
       address: data.address || null,
       website: data.website || null,
+      locale: data.locale || "es",
     },
   });
 
   if (current) {
     const changes = diffChanges(
-      { name: current.name, ruc: current.ruc, dv: current.dv, phone: current.phone, email: current.email, address: current.address, website: current.website },
-      { name: data.name, ruc: data.ruc, dv: data.dv, phone: data.phone, email: data.email, address: data.address, website: data.website },
+      { name: current.name, ruc: current.ruc, dv: current.dv, phone: current.phone, email: current.email, address: current.address, website: current.website, locale: current.locale },
+      { name: data.name, ruc: data.ruc, dv: data.dv, phone: data.phone, email: data.email, address: data.address, website: data.website, locale: data.locale },
     );
     if (changes) {
       await createAuditLog({
