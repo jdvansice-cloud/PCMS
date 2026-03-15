@@ -14,16 +14,33 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 async function getDashboardStats(organizationId: string) {
-  const [ownerCount, petCount] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const [ownerCount, petCount, appointmentsToday, salesToday] = await Promise.all([
     prisma.owner.count({ where: { organizationId } }),
     prisma.pet.count({ where: { organizationId, isActive: true } }),
+    prisma.appointment.count({
+      where: { organizationId, scheduledAt: { gte: todayStart, lte: todayEnd } },
+    }),
+    prisma.sale.aggregate({
+      where: { organizationId, createdAt: { gte: todayStart, lte: todayEnd } },
+      _sum: { total: true },
+    }),
   ]);
-  return { ownerCount, petCount };
+  return {
+    ownerCount,
+    petCount,
+    appointmentsToday,
+    salesTodayTotal: Number(salesToday._sum.total ?? 0),
+  };
 }
 
 export default async function DashboardPage() {
   const { organizationId } = await getCurrentUser();
-  const { ownerCount, petCount } = await getDashboardStats(organizationId);
+  const { ownerCount, petCount, appointmentsToday, salesTodayTotal } = await getDashboardStats(organizationId);
 
   const now = new Date();
   const greeting = getGreeting(now);
@@ -53,7 +70,7 @@ export default async function DashboardPage() {
     },
     {
       label: "Citas Hoy",
-      value: "0",
+      value: String(appointmentsToday),
       subtitle: "Programadas",
       icon: Calendar,
       color: "bg-[oklch(0.92_0.06_300)]",
@@ -61,7 +78,7 @@ export default async function DashboardPage() {
     },
     {
       label: "Ventas Hoy",
-      value: "$0.00",
+      value: `$${salesTodayTotal.toFixed(2)}`,
       subtitle: "Ingresos del día",
       icon: ShoppingCart,
       color: "bg-[oklch(0.92_0.06_230)]",

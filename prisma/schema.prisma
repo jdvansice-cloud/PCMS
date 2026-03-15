@@ -86,6 +86,7 @@ model Organization {
   services     Service[]
   products     Product[]
   appointments Appointment[]
+  sales        Sale[]
 
   @@map("organizations")
 }
@@ -131,6 +132,7 @@ model Owner {
   organization Organization  @relation(fields: [organizationId], references: [id])
   pets         Pet[]
   appointments Appointment[]
+  sales        Sale[]
 
   @@map("owners")
 }
@@ -179,6 +181,7 @@ model Service {
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  saleLines    SaleLine[]
 
   @@map("services")
 }
@@ -203,6 +206,7 @@ model Product {
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  saleLines    SaleLine[]
 
   @@map("products")
 }
@@ -230,4 +234,46 @@ model Appointment {
   vet          User?        @relation("AppointmentVet", fields: [vetId], references: [id])
 
   @@map("appointments")
+}
+
+// ─── Sales (POS) ──────────────────────────────────────────
+
+model Sale {
+  id             String        @id @default(cuid())
+  organizationId String        @map("organization_id")
+  ownerId        String?       @map("owner_id")
+  saleNumber     Int           @map("sale_number")
+  subtotal       Decimal       @db.Decimal(10, 2)
+  itbms          Decimal       @db.Decimal(10, 2)
+  total          Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod @default(CASH)
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  owner        Owner?       @relation(fields: [ownerId], references: [id])
+  lines        SaleLine[]
+
+  @@map("sales")
+}
+
+model SaleLine {
+  id          String  @id @default(cuid())
+  saleId      String  @map("sale_id")
+  productId   String? @map("product_id")
+  serviceId   String? @map("service_id")
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2) @map("unit_price")
+  isTaxExempt Boolean @default(false) @map("is_tax_exempt")
+  subtotal    Decimal @db.Decimal(10, 2)
+  itbms       Decimal @db.Decimal(10, 2)
+  lineTotal   Decimal @db.Decimal(10, 2) @map("line_total")
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
+
+  @@map("sale_lines")
 }
