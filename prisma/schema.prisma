@@ -1,7 +1,6 @@
 generator client {
-  provider        = "prisma-client"
-  output          = "../src/generated/prisma"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -836,6 +835,7 @@ model Kennel {
 model KennelStay {
   id              String     @id @default(cuid())
   organizationId  String     @map("organization_id")
+  branchId        String     @map("branch_id")
   kennelId        String     @map("kennel_id")
   petId           String     @map("pet_id")
   reason          String
@@ -849,6 +849,7 @@ model KennelStay {
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch           @relation(fields: [branchId], references: [id])
   kennel       Kennel           @relation(fields: [kennelId], references: [id])
   pet          Pet              @relation(fields: [petId], references: [id])
   dailyLogs    KennelDailyLog[]
