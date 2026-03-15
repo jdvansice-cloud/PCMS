@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const petSchema = z.object({
-  ownerId: z.string().min(1, "El dueño es requerido"),
-  name: z.string().min(1, "El nombre es requerido").max(100),
+  ownerId: z.string().min(1, "Dueño es requerido"),
+  name: z.string().min(1, "Nombre es requerido").max(100),
   species: z.enum(["DOG", "CAT", "BIRD", "REPTILE", "RODENT", "OTHER"]),
   breed: z.string().max(100).optional().or(z.literal("")),
   sex: z.enum(["MALE", "FEMALE", "UNKNOWN"]),
@@ -14,4 +14,4 @@ export const petSchema = z.object({
   notes: z.string().max(1000).optional().or(z.literal("")),
 });
 
-export type PetFormData = z.infer<typeof petSchema>;
+export type PetInput = z.infer<typeof petSchema>;

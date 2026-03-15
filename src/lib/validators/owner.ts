@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const ownerSchema = z.object({
-  firstName: z.string().min(1, "El nombre es requerido").max(100),
-  lastName: z.string().min(1, "El apellido es requerido").max(100),
+  firstName: z.string().min(1, "Nombre es requerido").max(100),
+  lastName: z.string().min(1, "Apellido es requerido").max(100),
   cedula: z.string().max(20).optional().or(z.literal("")),
   ruc: z.string().max(30).optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
@@ -12,4 +12,4 @@ export const ownerSchema = z.object({
   notes: z.string().max(1000).optional().or(z.literal("")),
 });
 
-export type OwnerFormData = z.infer<typeof ownerSchema>;
+export type OwnerInput = z.infer<typeof ownerSchema>;
