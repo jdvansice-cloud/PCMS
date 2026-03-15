@@ -2,11 +2,9 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserPermissions, can as canCheck } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/permissions";
 import { TenantProvider } from "@/lib/tenant-context";
 import { AppSidebar } from "@/components/app-sidebar";
-import type { Section } from "@/generated/prisma/client";
-import type { PermAction } from "@/lib/permissions";
 
 export default async function TenantLayout({
   children,
@@ -75,7 +73,6 @@ export default async function TenantLayout({
     },
     branding,
     permissions,
-    can: (action: PermAction, section: Section) => canCheck(permissions, action, section),
   };
 
   return (

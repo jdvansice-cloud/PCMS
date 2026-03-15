@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { PermissionMap, PermAction } from "@/lib/permissions";
 import type { Section } from "@/generated/prisma/client";
 import type { AuthUser } from "@/lib/auth";
@@ -24,25 +24,52 @@ type Branding = {
   darkMode: boolean;
 };
 
-type TenantContextType = {
+/** Serializable data passed from the server layout */
+type TenantData = {
   user: AuthUser;
   organization: Organization;
   branding: Branding;
   permissions: PermissionMap;
+};
+
+/** Full context including the client-built `can` function */
+type TenantContextType = TenantData & {
   can: (action: PermAction, section: Section) => boolean;
 };
 
 const TenantContext = createContext<TenantContextType | null>(null);
+
+/** Build `can` on the client from serializable permissions */
+function canCheck(permissions: PermissionMap, action: PermAction, section: Section): boolean {
+  const perm = permissions[section];
+  if (!perm) return false;
+  switch (action) {
+    case "view": return perm.canView;
+    case "create": return perm.canCreate;
+    case "edit": return perm.canEdit;
+    case "delete": return perm.canDelete;
+    default: return false;
+  }
+}
 
 export function TenantProvider({
   children,
   value,
 }: {
   children: ReactNode;
-  value: TenantContextType;
+  value: TenantData;
 }) {
+  const contextValue = useMemo<TenantContextType>(
+    () => ({
+      ...value,
+      can: (action: PermAction, section: Section) =>
+        canCheck(value.permissions, action, section),
+    }),
+    [value]
+  );
+
   return (
-    <TenantContext.Provider value={value}>{children}</TenantContext.Provider>
+    <TenantContext.Provider value={contextValue}>{children}</TenantContext.Provider>
   );
 }
 
