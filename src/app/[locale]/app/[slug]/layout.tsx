@@ -49,15 +49,11 @@ export default async function TenantLayout({
 
   if (!org) notFound();
 
-  // If org locale doesn't match URL locale, set the NEXT_LOCALE cookie and redirect.
-  // next-intl middleware reads this cookie to determine locale on subsequent requests.
+  // If org locale doesn't match URL locale, redirect to the API route that
+  // sets the NEXT_LOCALE cookie and then redirects to the correct locale URL.
   const orgLocale = org.locale ?? "es";
   if (locale !== orgLocale) {
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    cookieStore.set("NEXT_LOCALE", orgLocale, { path: "/", maxAge: 60 * 60 * 24 * 365 });
-    const prefix = orgLocale === "es" ? "" : `/${orgLocale}`;
-    redirect(`${prefix}/app/${slug}`);
+    redirect(`/api/set-locale?locale=${orgLocale}&redirect=/app/${slug}`);
   }
 
   const permissions = await getUserPermissions(auth.user.userType, auth.user.roleId);
