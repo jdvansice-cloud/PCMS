@@ -52,7 +52,7 @@ export default async function ServicesPage({
       <SearchInput placeholder={t("searchPlaceholder")} />
 
       {services.length === 0 ? (
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4 mb-3">
               <ClipboardList className="h-8 w-8 text-muted-foreground/50" />
@@ -65,7 +65,7 @@ export default async function ServicesPage({
           <div className="space-y-2 sm:hidden">
             {services.map((s) => (
               <Link key={s.id} href={`/app/${slug}/services/${s.id}`}>
-                <Card className="shadow-sm border-0 shadow-black/5">
+                <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -80,7 +80,7 @@ export default async function ServicesPage({
             ))}
           </div>
 
-          <Card className="shadow-sm border-0 shadow-black/5 hidden sm:block">
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

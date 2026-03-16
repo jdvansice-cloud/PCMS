@@ -69,7 +69,7 @@ export default function AvailabilityPage() {
         </Link>
       </PageHeader>
 
-      <Card className="shadow-sm border-0 shadow-black/5">
+      <Card>
         <CardContent className="p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             {hours.map((day, idx) => (

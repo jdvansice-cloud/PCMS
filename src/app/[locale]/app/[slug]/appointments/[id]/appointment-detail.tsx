@@ -21,12 +21,12 @@ import { updateAppointmentStatus, deleteAppointment } from "../actions";
 import type { AppointmentStatus } from "@/generated/prisma/client";
 
 const STATUS_COLORS: Record<string, string> = {
-  SCHEDULED: "bg-blue-100 text-blue-800",
-  CONFIRMED: "bg-indigo-100 text-indigo-800",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-gray-100 text-gray-800",
-  NO_SHOW: "bg-red-100 text-red-800",
+  SCHEDULED: "bg-[var(--status-scheduled)]/10 text-[var(--status-scheduled)]",
+  CONFIRMED: "bg-[var(--status-confirmed)]/10 text-[var(--status-confirmed)]",
+  IN_PROGRESS: "bg-[var(--status-in-progress)]/10 text-[var(--status-in-progress)]",
+  COMPLETED: "bg-[var(--status-completed)]/10 text-[var(--status-completed)]",
+  CANCELLED: "bg-[var(--status-cancelled)]/10 text-[var(--status-cancelled)]",
+  NO_SHOW: "bg-[var(--status-no-show)]/10 text-[var(--status-no-show)]",
 };
 
 type Appointment = {
@@ -92,7 +92,7 @@ export function AppointmentDetail({
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="shadow-sm border-0 shadow-black/5 lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardContent className="p-4 sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2 text-sm">
               <div>
@@ -159,7 +159,7 @@ export function AppointmentDetail({
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="p-4 sm:p-6 space-y-4">
             <h3 className="font-semibold text-sm">{tc("status")}</h3>
             <Badge className={`text-sm px-3 py-1 ${STATUS_COLORS[a.status] ?? ""}`}>

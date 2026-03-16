@@ -30,7 +30,7 @@ export default async function SaleDetailPage({
         </Link>
       </PageHeader>
 
-      <Card className="shadow-sm border-0 shadow-black/5 max-w-lg">
+      <Card className="max-w-lg">
         <CardContent className="p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

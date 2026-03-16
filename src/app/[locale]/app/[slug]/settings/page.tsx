@@ -29,7 +29,7 @@ export default async function SettingsPage({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sections.map((s) => (
           <Link key={s.href} href={s.href}>
-            <Card className="shadow-sm border-0 shadow-black/5 hover:shadow-md transition-shadow cursor-pointer h-full">
+            <Card className="cursor-pointer h-full">
               <CardContent className="p-5">
                 <div className="flex items-start gap-3">
                   <div className="rounded-lg bg-muted p-2">

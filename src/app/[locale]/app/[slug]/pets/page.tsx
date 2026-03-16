@@ -48,7 +48,7 @@ export default async function PetsPage({
       <SearchInput placeholder={t("searchPlaceholder")} />
 
       {pets.length === 0 ? (
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4 mb-3">
               <Dog className="h-8 w-8 text-muted-foreground/50" />
@@ -62,7 +62,7 @@ export default async function PetsPage({
           <div className="space-y-2 sm:hidden">
             {pets.map((p) => (
               <Link key={p.id} href={`/app/${slug}/pets/${p.id}`}>
-                <Card className="shadow-sm border-0 shadow-black/5">
+                <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -78,7 +78,7 @@ export default async function PetsPage({
           </div>
 
           {/* Desktop table */}
-          <Card className="shadow-sm border-0 shadow-black/5 hidden sm:block">
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

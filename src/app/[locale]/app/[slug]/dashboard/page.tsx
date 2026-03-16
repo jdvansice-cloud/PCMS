@@ -78,12 +78,12 @@ async function getDashboardData(organizationId: string) {
 }
 
 const statusColors: Record<string, string> = {
-  SCHEDULED: "bg-blue-100 text-blue-700",
-  CONFIRMED: "bg-emerald-100 text-emerald-700",
-  IN_PROGRESS: "bg-amber-100 text-amber-700",
-  COMPLETED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
-  NO_SHOW: "bg-gray-100 text-gray-600",
+  SCHEDULED: "bg-[var(--status-scheduled)]/10 text-[var(--status-scheduled)]",
+  CONFIRMED: "bg-[var(--status-confirmed)]/10 text-[var(--status-confirmed)]",
+  IN_PROGRESS: "bg-[var(--status-in-progress)]/10 text-[var(--status-in-progress)]",
+  COMPLETED: "bg-[var(--status-completed)]/10 text-[var(--status-completed)]",
+  CANCELLED: "bg-[var(--status-cancelled)]/10 text-[var(--status-cancelled)]",
+  NO_SHOW: "bg-[var(--status-no-show)]/10 text-[var(--status-no-show)]",
 };
 
 const actionLabels: Record<string, string> = {
@@ -135,8 +135,8 @@ export default async function DashboardPage({
       value: String(data.ownerCount),
       subtitle: ts("totalRegistered"),
       icon: Users,
-      color: "bg-[oklch(0.92_0.04_175)]",
-      iconColor: "text-[oklch(0.50_0.12_175)]",
+      color: "bg-[oklch(0.94_0.08_175)]",
+      iconColor: "text-[oklch(0.45_0.18_175)]",
       href: `${base}/clients`,
     },
     {
@@ -144,8 +144,8 @@ export default async function DashboardPage({
       value: String(data.petCount),
       subtitle: ts("activePatients"),
       icon: Dog,
-      color: "bg-[oklch(0.92_0.06_55)]",
-      iconColor: "text-[oklch(0.60_0.14_55)]",
+      color: "bg-[oklch(0.94_0.10_55)]",
+      iconColor: "text-[oklch(0.55_0.20_55)]",
       href: `${base}/pets`,
     },
     {
@@ -153,8 +153,8 @@ export default async function DashboardPage({
       value: String(data.appointmentsToday),
       subtitle: ts("scheduled"),
       icon: Calendar,
-      color: "bg-[oklch(0.92_0.06_300)]",
-      iconColor: "text-[oklch(0.55_0.15_300)]",
+      color: "bg-[oklch(0.94_0.10_300)]",
+      iconColor: "text-[oklch(0.50_0.20_300)]",
       href: `${base}/appointments`,
     },
     {
@@ -162,8 +162,8 @@ export default async function DashboardPage({
       value: `$${data.salesTodayTotal.toFixed(2)}`,
       subtitle: ts("dailyRevenue"),
       icon: ShoppingCart,
-      color: "bg-[oklch(0.92_0.06_230)]",
-      iconColor: "text-[oklch(0.55_0.15_230)]",
+      color: "bg-[oklch(0.94_0.10_230)]",
+      iconColor: "text-[oklch(0.50_0.20_230)]",
       href: `${base}/pos/sales`,
     },
   ];
@@ -175,7 +175,7 @@ export default async function DashboardPage({
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-8 sm:space-y-10">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting}</h1>
@@ -183,10 +183,10 @@ export default async function DashboardPage({
       </div>
 
       {/* Stat Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:gap-5 grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Link key={stat.label} href={stat.href}>
-            <Card className="shadow-sm border-0 shadow-black/5 hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="cursor-pointer">
               <CardContent className="p-3 sm:p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-0.5 sm:space-y-1 min-w-0">
@@ -229,9 +229,9 @@ export default async function DashboardPage({
       </div>
 
       {/* Today's Appointments + Recent Activity */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
         {/* Today's Appointments */}
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export default async function DashboardPage({
         </Card>
 
         {/* Recent Activity */}
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-4">
               <PawPrint className="h-4 w-4 text-secondary" />

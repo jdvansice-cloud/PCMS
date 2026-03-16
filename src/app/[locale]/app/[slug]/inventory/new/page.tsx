@@ -36,7 +36,7 @@ export default function NewProductPage() {
         </Link>
       </PageHeader>
 
-      <Card className="shadow-sm border-0 shadow-black/5">
+      <Card>
         <CardContent className="p-4 sm:p-6">
           <form action={createProduct} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">

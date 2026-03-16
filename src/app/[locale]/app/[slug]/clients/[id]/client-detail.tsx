@@ -80,7 +80,7 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="shadow-sm border-0 shadow-black/5 lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardContent className="p-4 sm:p-6">
             {editing ? (
               <form onSubmit={handleSave} className="space-y-4">
@@ -145,7 +145,7 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm flex items-center gap-1.5">

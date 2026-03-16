@@ -224,7 +224,7 @@ export default function UsersPage() {
       </PageHeader>
 
       {users.length === 0 ? (
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4 mb-3">
               <Users className="h-8 w-8 text-muted-foreground/50" />
@@ -242,7 +242,7 @@ export default function UsersPage() {
           {/* Mobile cards */}
           <div className="space-y-2 sm:hidden">
             {users.map((u) => (
-              <Card key={u.id} className="shadow-sm border-0 shadow-black/5">
+              <Card key={u.id}>
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -309,7 +309,7 @@ export default function UsersPage() {
           </div>
 
           {/* Desktop table */}
-          <Card className="shadow-sm border-0 shadow-black/5 hidden sm:block">
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

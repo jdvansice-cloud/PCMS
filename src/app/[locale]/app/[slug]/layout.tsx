@@ -93,7 +93,7 @@ export default async function TenantLayout({
         <div className="flex h-screen" style={{ fontFamily: `"${fontFamily}", ui-sans-serif, system-ui, sans-serif` }}>
           <AppSidebar slug={slug} />
           <main className="flex-1 overflow-auto bg-background">
-            <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+            <div className="p-5 sm:p-7 lg:p-10">{children}</div>
           </main>
         </div>
       </TenantProvider>

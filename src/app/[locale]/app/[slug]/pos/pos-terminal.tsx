@@ -223,7 +223,7 @@ export function PosTerminal({ data, slug }: { data: PosData; slug: string }) {
         </div>
 
         {/* Cart */}
-        <Card className="lg:col-span-2 shadow-sm border-0 shadow-black/5">
+        <Card className="lg:col-span-2">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />

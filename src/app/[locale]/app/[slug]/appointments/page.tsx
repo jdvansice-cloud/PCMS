@@ -11,12 +11,12 @@ import { Pagination } from "@/components/pagination";
 import { getAppointments } from "./actions";
 
 const STATUS_COLORS: Record<string, string> = {
-  SCHEDULED: "bg-blue-100 text-blue-800",
-  CONFIRMED: "bg-indigo-100 text-indigo-800",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-gray-100 text-gray-800",
-  NO_SHOW: "bg-red-100 text-red-800",
+  SCHEDULED: "bg-[var(--status-scheduled)]/10 text-[var(--status-scheduled)]",
+  CONFIRMED: "bg-[var(--status-confirmed)]/10 text-[var(--status-confirmed)]",
+  IN_PROGRESS: "bg-[var(--status-in-progress)]/10 text-[var(--status-in-progress)]",
+  COMPLETED: "bg-[var(--status-completed)]/10 text-[var(--status-completed)]",
+  CANCELLED: "bg-[var(--status-cancelled)]/10 text-[var(--status-cancelled)]",
+  NO_SHOW: "bg-[var(--status-no-show)]/10 text-[var(--status-no-show)]",
 };
 
 export default async function AppointmentsPage({
@@ -57,7 +57,7 @@ export default async function AppointmentsPage({
       <SearchInput placeholder={t("searchPlaceholder")} />
 
       {appointments.length === 0 ? (
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4 mb-3">
               <Calendar className="h-8 w-8 text-muted-foreground/50" />
@@ -71,7 +71,7 @@ export default async function AppointmentsPage({
           <div className="space-y-2 sm:hidden">
             {appointments.map((a) => (
               <Link key={a.id} href={`/app/${slug}/appointments/${a.id}`}>
-                <Card className="shadow-sm border-0 shadow-black/5">
+                <Card>
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between">
                       <div>
@@ -94,7 +94,7 @@ export default async function AppointmentsPage({
           </div>
 
           {/* Desktop table */}
-          <Card className="shadow-sm border-0 shadow-black/5 hidden sm:block">
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

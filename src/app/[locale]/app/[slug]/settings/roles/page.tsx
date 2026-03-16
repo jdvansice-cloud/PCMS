@@ -166,7 +166,7 @@ export default function RolesPage() {
           {roles.map((role) => (
             <Card
               key={role.id}
-              className={`shadow-sm border-0 shadow-black/5 cursor-pointer transition-shadow hover:shadow-md ${
+              className={`cursor-pointer ${
                 selectedRoleId === role.id
                   ? "ring-2 ring-primary"
                   : ""
@@ -236,7 +236,7 @@ export default function RolesPage() {
         {/* ── Right panel: Permissions matrix ─────────────────── */}
         <div className="flex-1 min-w-0">
           {selectedRole ? (
-            <Card className="shadow-sm border-0 shadow-black/5">
+            <Card>
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -369,7 +369,7 @@ export default function RolesPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="shadow-sm border-0 shadow-black/5">
+            <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="rounded-full bg-muted p-4 mb-3">
                   <Shield className="h-8 w-8 text-muted-foreground/50" />

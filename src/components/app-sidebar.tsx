@@ -20,7 +20,6 @@ import {
   X,
   LogOut,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTenant } from "@/lib/tenant-context";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,6 +32,7 @@ type NavItem = {
 
 export function AppSidebar({ slug }: { slug: string }) {
   const t = useTranslations("nav");
+  const ta = useTranslations("auth");
   const { user, organization, permissions, can } = useTenant();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -70,17 +70,17 @@ export function AppSidebar({ slug }: { slug: string }) {
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="flex h-14 items-center justify-between px-4">
-        <Link href={`${base}/dashboard`} className="flex items-center gap-2">
+      <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
+        <Link href={`${base}/dashboard`} className="flex items-center gap-2.5">
           {organization.logo ? (
-            <img src={organization.logo} alt={organization.name} className="h-8 w-8 rounded" />
+            <img src={organization.logo} alt={organization.name} className="h-9 w-9 rounded-lg" />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-white/15 text-white font-bold text-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15 text-white font-bold text-sm">
               {organization.name.charAt(0)}
             </div>
           )}
           {!collapsed && (
-            <span className="text-white font-semibold text-base truncate max-w-[140px]">
+            <span className="text-white font-semibold text-[0.9375rem] truncate max-w-[140px]">
               {organization.name}
             </span>
           )}
@@ -88,18 +88,18 @@ export function AppSidebar({ slug }: { slug: string }) {
         {/* Desktop collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex h-7 w-7 items-center justify-center rounded text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
         >
           <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
         </button>
         {/* Mobile close */}
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden text-white/50 hover:text-white">
+        <button onClick={() => setMobileOpen(false)} className="lg:hidden text-white/40 hover:text-white">
           <X className="h-5 w-5" />
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-2 py-3 overflow-y-auto">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {visibleItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -107,23 +107,9 @@ export function AppSidebar({ slug }: { slug: string }) {
               key={item.nameKey}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium transition-all duration-150"
-              style={{
-                backgroundColor: active ? "var(--brand-sidebar-active, rgba(255,255,255,0.15))" : undefined,
-                color: active ? "#fff" : "rgba(255,255,255,0.6)",
-              }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = "var(--brand-sidebar-hover, rgba(255,255,255,0.08))";
-                  e.currentTarget.style.color = "rgba(255,255,255,0.9)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "rgba(255,255,255,0.6)";
-                }
-              }}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium transition-all duration-150 ${
+                active ? "sidebar-nav-item-active" : "sidebar-nav-item"
+              }`}
               title={collapsed ? t(item.nameKey) : undefined}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
@@ -134,9 +120,9 @@ export function AppSidebar({ slug }: { slug: string }) {
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-white/10 p-3 space-y-2">
-        <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white text-xs font-semibold shrink-0">
+      <div className="border-t border-white/10 p-4 space-y-2.5">
+        <div className={`flex items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15 text-white text-xs font-semibold shrink-0">
             {user.firstName.charAt(0)}{user.lastName.charAt(0)}
           </div>
           {!collapsed && (
@@ -150,12 +136,12 @@ export function AppSidebar({ slug }: { slug: string }) {
         </div>
         <button
           onClick={handleSignOut}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-white/50 hover:text-white hover:bg-white/10 transition-colors w-full ${
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/40 hover:text-white hover:bg-white/10 transition-colors w-full ${
             collapsed ? "justify-center" : ""
           }`}
         >
           <LogOut className="h-3.5 w-3.5" />
-          {!collapsed && <span>Cerrar sesión</span>}
+          {!collapsed && <span>{ta("logout")}</span>}
         </button>
       </div>
     </>
@@ -174,10 +160,10 @@ export function AppSidebar({ slug }: { slug: string }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMobileOpen(false)}>
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <aside
             className="relative flex w-[260px] h-full flex-col"
-            style={{ backgroundColor: "var(--brand-sidebar, oklch(0.35 0.08 175))" }}
+            style={{ backgroundColor: "var(--brand-sidebar, oklch(0.25 0.06 250))" }}
             onClick={(e) => e.stopPropagation()}
           >
             {sidebarContent}
@@ -190,7 +176,7 @@ export function AppSidebar({ slug }: { slug: string }) {
         className={`hidden lg:flex flex-col transition-all duration-200 ${
           collapsed ? "w-16" : "w-[240px]"
         }`}
-        style={{ backgroundColor: "var(--brand-sidebar, oklch(0.35 0.08 175))" }}
+        style={{ backgroundColor: "var(--brand-sidebar, oklch(0.25 0.06 250))" }}
       >
         {sidebarContent}
       </aside>

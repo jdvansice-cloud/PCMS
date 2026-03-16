@@ -42,7 +42,7 @@ export default async function SalesPage({
       <SearchInput placeholder={t("searchItems")} />
 
       {sales.length === 0 ? (
-        <Card className="shadow-sm border-0 shadow-black/5">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="rounded-full bg-muted p-4 mb-3">
               <ShoppingCart className="h-8 w-8 text-muted-foreground/50" />
@@ -55,7 +55,7 @@ export default async function SalesPage({
           <div className="space-y-2 sm:hidden">
             {sales.map((s) => (
               <Link key={s.id} href={`${base}/sales/${s.id}`}>
-                <Card className="shadow-sm border-0 shadow-black/5">
+                <Card>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -72,7 +72,7 @@ export default async function SalesPage({
             ))}
           </div>
 
-          <Card className="shadow-sm border-0 shadow-black/5 hidden sm:block">
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
