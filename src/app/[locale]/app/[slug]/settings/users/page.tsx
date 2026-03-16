@@ -252,13 +252,26 @@ export default function UsersPage() {
                       <p className="text-xs text-muted-foreground truncate">
                         {u.email}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {userTypeBadge(u.userType)}
                         {statusBadge(u.isActive)}
                         {u.role && (
                           <Badge variant="outline">{u.role.name}</Badge>
                         )}
                       </div>
+                      {u.userBranches && u.userBranches.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          {u.userBranches.map((ub) => (
+                            <Badge
+                              key={ub.branch.id}
+                              variant={ub.isDefault ? "default" : "outline"}
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              {ub.branch.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {canManageUser(u) && u.isActive && (
                       <Button
@@ -304,6 +317,7 @@ export default function UsersPage() {
                   <TableHead>{t("email")}</TableHead>
                   <TableHead>{t("userType")}</TableHead>
                   <TableHead>{t("role")}</TableHead>
+                  <TableHead>{t("userBranches")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
                   <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
@@ -342,6 +356,19 @@ export default function UsersPage() {
                           {u.role?.name ?? t("noRole")}
                         </span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {u.userBranches?.map((ub) => (
+                          <Badge
+                            key={ub.branch.id}
+                            variant={ub.isDefault ? "default" : "outline"}
+                            className="text-xs"
+                          >
+                            {ub.branch.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>{statusBadge(u.isActive)}</TableCell>
                     <TableCell className="text-right">

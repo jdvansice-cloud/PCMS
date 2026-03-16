@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
-import { Building2, Palette, Users, Shield, Clock, CreditCard } from "lucide-react";
+import { Building2, Palette, Users, Shield, Clock, CreditCard, Store } from "lucide-react";
 
 export default async function SettingsPage({
   params,
@@ -17,6 +17,7 @@ export default async function SettingsPage({
     { title: t("company"), desc: t("companyDesc"), href: `${base}/company`, icon: Building2 },
     { title: t("branding"), desc: t("brandingDesc"), href: `${base}/branding`, icon: Palette },
     { title: t("users"), desc: t("usersDesc"), href: `${base}/users`, icon: Users },
+    { title: t("branches"), desc: t("branchesDesc"), href: `${base}/branches`, icon: Store },
     { title: t("roles"), desc: t("rolesDesc"), href: `${base}/roles`, icon: Shield },
     { title: t("availability"), desc: t("availabilityDesc"), href: `${base}/availability`, icon: Clock },
     { title: t("billing"), desc: t("billingDesc"), href: `${base}/billing`, icon: CreditCard },

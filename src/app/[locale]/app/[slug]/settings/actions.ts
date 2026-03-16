@@ -131,7 +131,13 @@ export async function getUsers() {
   const { organizationId } = await getCurrentUser();
   return prisma.user.findMany({
     where: { organizationId },
-    include: { role: { select: { name: true } } },
+    include: {
+      role: { select: { name: true } },
+      userBranches: {
+        include: { branch: { select: { id: true, name: true, isMain: true } } },
+        orderBy: { isDefault: "desc" },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -329,6 +335,9 @@ export async function inviteUser(formData: FormData) {
       lastName,
       userType,
       roleId: userType === "STAFF" && roleId ? roleId : null,
+      userBranches: {
+        create: { branchId: branch.id, isDefault: true },
+      },
     },
   });
 
@@ -407,6 +416,284 @@ export async function deactivateUser(userId: string) {
     metadata: { email: targetUser.email },
   });
 
+  revalidatePath(`/app/${slug}/settings/users`);
+  return { success: true };
+}
+
+// ─── Branch Management ──────────────────────────────────────────────────────
+
+export async function getBranches() {
+  const { organizationId } = await getCurrentUser();
+  return prisma.branch.findMany({
+    where: { organizationId },
+    include: {
+      _count: { select: { userBranches: true } },
+    },
+    orderBy: [{ isMain: "desc" }, { name: "asc" }],
+  });
+}
+
+export async function createBranch(formData: FormData) {
+  const { user, organizationId, slug } = await getCurrentUser();
+  const name = formData.get("name") as string;
+  const phone = (formData.get("phone") as string) || null;
+  const email = (formData.get("email") as string) || null;
+  const address = (formData.get("address") as string) || null;
+
+  if (!name?.trim()) throw new Error("Branch name is required");
+
+  const branch = await prisma.branch.create({
+    data: {
+      organizationId,
+      name: name.trim(),
+      phone,
+      email,
+      address,
+      isMain: false,
+      updatedAt: new Date(),
+      businessHours: {
+        create: [
+          { dayOfWeek: 0, openTime: "08:00", closeTime: "13:00", isClosed: true },
+          { dayOfWeek: 1, openTime: "08:00", closeTime: "18:00", isClosed: false },
+          { dayOfWeek: 2, openTime: "08:00", closeTime: "18:00", isClosed: false },
+          { dayOfWeek: 3, openTime: "08:00", closeTime: "18:00", isClosed: false },
+          { dayOfWeek: 4, openTime: "08:00", closeTime: "18:00", isClosed: false },
+          { dayOfWeek: 5, openTime: "08:00", closeTime: "18:00", isClosed: false },
+          { dayOfWeek: 6, openTime: "08:00", closeTime: "13:00", isClosed: false },
+        ],
+      },
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "Branch",
+    entityId: branch.id,
+    metadata: { name, phone, email, address },
+  });
+
+  revalidatePath(`/app/${slug}/settings/branches`);
+  return { success: true, branchId: branch.id };
+}
+
+export async function updateBranch(branchId: string, data: {
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+  const current = await prisma.branch.findFirst({
+    where: { id: branchId, organizationId },
+  });
+  if (!current) throw new Error("Branch not found");
+
+  await prisma.branch.update({
+    where: { id: branchId },
+    data: {
+      name: data.name,
+      phone: data.phone || null,
+      email: data.email || null,
+      address: data.address || null,
+    },
+  });
+
+  const changes = diffChanges(
+    { name: current.name, phone: current.phone, email: current.email, address: current.address },
+    { name: data.name, phone: data.phone, email: data.email, address: data.address },
+  );
+  if (changes) {
+    await createAuditLog({
+      organizationId,
+      userId: user.id,
+      action: "UPDATE",
+      entityType: "Branch",
+      entityId: branchId,
+      changes,
+    });
+  }
+
+  revalidatePath(`/app/${slug}/settings/branches`);
+  return { success: true };
+}
+
+export async function toggleBranchActive(branchId: string) {
+  const { user, organizationId, slug } = await getCurrentUser();
+  const branch = await prisma.branch.findFirst({
+    where: { id: branchId, organizationId },
+  });
+  if (!branch) throw new Error("Branch not found");
+  if (branch.isMain && branch.isActive) throw new Error("Cannot deactivate the main branch");
+
+  const newState = !branch.isActive;
+  await prisma.branch.update({
+    where: { id: branchId },
+    data: { isActive: newState },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: newState ? "RESTORE" : "SOFT_DELETE",
+    entityType: "Branch",
+    entityId: branchId,
+    metadata: { name: branch.name },
+  });
+
+  revalidatePath(`/app/${slug}/settings/branches`);
+  return { success: true };
+}
+
+export async function getBranchUsers(branchId: string) {
+  const { organizationId } = await getCurrentUser();
+  const users = await prisma.user.findMany({
+    where: { organizationId },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      userType: true,
+      isActive: true,
+      userBranches: {
+        where: { branchId },
+        select: { isDefault: true },
+      },
+    },
+    orderBy: { firstName: "asc" },
+  });
+  return users.map((u) => ({
+    ...u,
+    isAssigned: u.userBranches.length > 0,
+    isDefault: u.userBranches[0]?.isDefault ?? false,
+  }));
+}
+
+export async function assignUserBranches(
+  userId: string,
+  branchIds: string[],
+  defaultBranchId: string,
+) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const targetUser = await prisma.user.findFirst({
+    where: { id: userId, organizationId },
+  });
+  if (!targetUser) throw new Error("User not found");
+
+  if (branchIds.length > 0 && !branchIds.includes(defaultBranchId)) {
+    throw new Error("Default branch must be in the assigned branches list");
+  }
+
+  await prisma.$transaction([
+    prisma.userBranch.deleteMany({ where: { userId } }),
+    ...(branchIds.length > 0
+      ? [
+          prisma.userBranch.createMany({
+            data: branchIds.map((bid) => ({
+              userId,
+              branchId: bid,
+              isDefault: bid === defaultBranchId,
+            })),
+          }),
+          prisma.user.update({
+            where: { id: userId },
+            data: { branchId: defaultBranchId },
+          }),
+        ]
+      : [
+          prisma.user.update({
+            where: { id: userId },
+            data: { branchId: null },
+          }),
+        ]),
+  ]);
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "UserBranch",
+    entityId: userId,
+    metadata: { branchIds, defaultBranchId },
+  });
+
+  revalidatePath(`/app/${slug}/settings/branches`);
+  revalidatePath(`/app/${slug}/settings/users`);
+  return { success: true };
+}
+
+export async function updateBranchAssignments(
+  branchId: string,
+  assignments: { userId: string; isAssigned: boolean; isDefault: boolean }[],
+) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { id: branchId, organizationId },
+  });
+  if (!branch) throw new Error("Branch not found");
+
+  for (const a of assignments) {
+    const targetUser = await prisma.user.findFirst({
+      where: { id: a.userId, organizationId },
+    });
+    if (!targetUser) continue;
+
+    if (a.isAssigned) {
+      // Upsert the assignment
+      await prisma.userBranch.upsert({
+        where: { userId_branchId: { userId: a.userId, branchId } },
+        update: { isDefault: a.isDefault },
+        create: { userId: a.userId, branchId, isDefault: a.isDefault },
+      });
+
+      // If this is set as default, clear default from other branches for this user
+      if (a.isDefault) {
+        await prisma.userBranch.updateMany({
+          where: { userId: a.userId, branchId: { not: branchId } },
+          data: { isDefault: false },
+        });
+        // Sync User.branchId
+        await prisma.user.update({
+          where: { id: a.userId },
+          data: { branchId },
+        });
+      }
+    } else {
+      // Remove the assignment
+      await prisma.userBranch.deleteMany({
+        where: { userId: a.userId, branchId },
+      });
+
+      // If user's active branch was this one, set to their remaining default
+      if (targetUser.branchId === branchId) {
+        const remaining = await prisma.userBranch.findFirst({
+          where: { userId: a.userId, isDefault: true },
+        });
+        await prisma.user.update({
+          where: { id: a.userId },
+          data: { branchId: remaining?.branchId ?? null },
+        });
+      }
+    }
+  }
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "BranchAssignment",
+    entityId: branchId,
+    metadata: {
+      assigned: assignments.filter((a) => a.isAssigned).map((a) => a.userId),
+      removed: assignments.filter((a) => !a.isAssigned).map((a) => a.userId),
+    },
+  });
+
+  revalidatePath(`/app/${slug}/settings/branches`);
   revalidatePath(`/app/${slug}/settings/users`);
   return { success: true };
 }

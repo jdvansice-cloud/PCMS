@@ -88,6 +88,15 @@ export async function createOrganization(input: {
     },
   });
 
+  // Create user-branch assignment for owner
+  await prisma.userBranch.create({
+    data: {
+      userId: user.id,
+      branchId: mainBranch.id,
+      isDefault: true,
+    },
+  });
+
   // Create default roles with permissions
   for (const roleDef of DEFAULT_ROLES) {
     await prisma.role.create({

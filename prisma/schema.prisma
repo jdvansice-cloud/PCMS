@@ -290,6 +290,7 @@ model Branch {
   groomingSessions GroomingSession[]
   kennels        Kennel[]
   kennelStays    KennelStay[]
+  userBranches   UserBranch[]
 
   @@map("branches")
 }
@@ -340,9 +341,26 @@ model User {
   groomingSessions GroomingSession[] @relation("GroomingGroomer")
   refundsProcessed Refund[]          @relation("RefundProcessor")
   kennelDailyLogs  KennelDailyLog[]  @relation("KennelLogUser")
+  userBranches     UserBranch[]
 
   @@index([organizationId])
   @@map("users")
+}
+
+model UserBranch {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  branchId  String   @map("branch_id")
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId])
+  @@index([userId])
+  @@index([branchId])
+  @@map("user_branches")
 }
 
 model Role {
