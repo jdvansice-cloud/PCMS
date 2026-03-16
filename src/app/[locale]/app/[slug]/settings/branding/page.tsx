@@ -24,6 +24,8 @@ const FONT_OPTIONS = [
 
 export default function BrandingPage() {
   const t = useTranslations("settings");
+  const tc = useTranslations("common");
+  const tf = useTranslations("form");
   const { organization } = useTenant();
   const router = useRouter();
   const slug = organization.slug;
@@ -73,7 +75,7 @@ export default function BrandingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Cargando...</p>
+        <p className="text-muted-foreground">{tc("loading")}</p>
       </div>
     );
   }
@@ -97,12 +99,12 @@ export default function BrandingPage() {
         <CardContent className="p-6 space-y-5">
           <div className="flex items-center gap-2 mb-2">
             <Palette className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold">Colores</h2>
+            <h2 className="font-semibold">{tf("colors")}</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-2">
-              <Label>Color Primario</Label>
+              <Label>{tf("primaryColor")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -118,12 +120,12 @@ export default function BrandingPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Botones, enlaces y acentos principales
+                {tf("primaryColorDesc")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Color Secundario</Label>
+              <Label>{tf("secondaryColor")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -139,12 +141,12 @@ export default function BrandingPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Acentos secundarios y highlights
+                {tf("secondaryColorDesc")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Color de Acento (opcional)</Label>
+              <Label>{tf("accentColor")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -162,7 +164,7 @@ export default function BrandingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Color de Sidebar (opcional)</Label>
+              <Label>{tf("sidebarColor")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -182,26 +184,26 @@ export default function BrandingPage() {
 
           {/* Preview */}
           <div className="pt-4 border-t">
-            <p className="text-sm font-medium mb-3">Vista previa</p>
+            <p className="text-sm font-medium mb-3">{tf("preview")}</p>
             <div className="flex items-center gap-3 flex-wrap">
               <div
                 className="h-10 w-24 rounded-lg flex items-center justify-center text-white text-sm font-medium"
                 style={{ backgroundColor: primaryColor }}
               >
-                Primario
+                {tf("primary")}
               </div>
               <div
                 className="h-10 w-24 rounded-lg flex items-center justify-center text-white text-sm font-medium"
                 style={{ backgroundColor: secondaryColor }}
               >
-                Secundario
+                {tf("secondary")}
               </div>
               {accentColor && (
                 <div
                   className="h-10 w-24 rounded-lg flex items-center justify-center text-white text-sm font-medium"
                   style={{ backgroundColor: accentColor }}
                 >
-                  Acento
+                  {tf("accent")}
                 </div>
               )}
               {sidebarColor && (
@@ -209,7 +211,7 @@ export default function BrandingPage() {
                   className="h-10 w-24 rounded-lg flex items-center justify-center text-white text-sm font-medium"
                   style={{ backgroundColor: sidebarColor }}
                 >
-                  Sidebar
+                  {tf("sidebar")}
                 </div>
               )}
             </div>
@@ -220,9 +222,9 @@ export default function BrandingPage() {
       {/* Typography */}
       <Card>
         <CardContent className="p-6 space-y-4">
-          <h2 className="font-semibold">Tipografía</h2>
+          <h2 className="font-semibold">{tf("typography")}</h2>
           <div className="space-y-2">
-            <Label>Fuente principal</Label>
+            <Label>{tf("mainFont")}</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {FONT_OPTIONS.map((font) => (
                 <button
@@ -252,9 +254,9 @@ export default function BrandingPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Modo Oscuro</h2>
+              <h2 className="font-semibold">{tf("darkMode")}</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Activar tema oscuro para toda la aplicación
+                {tf("darkModeDesc")}
               </p>
             </div>
             <Switch checked={darkMode} onCheckedChange={setDarkMode} />
@@ -266,7 +268,7 @@ export default function BrandingPage() {
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           <Save className="h-4 w-4" />
-          {saving ? "Guardando..." : "Guardar cambios"}
+          {saving ? tf("saving") : tf("saveChanges")}
         </Button>
       </div>
     </div>

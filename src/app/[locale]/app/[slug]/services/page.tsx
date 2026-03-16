@@ -33,6 +33,9 @@ export default async function ServicesPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("services");
+  const tc = await getTranslations("common");
+  const ta = await getTranslations("appointments");
+  const tp = await getTranslations("pos");
 
   const { services, totalPages } = await getServices(search, page);
 
@@ -81,9 +84,9 @@ export default async function ServicesPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Precio</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{ta("type")}</TableHead>
+                  <TableHead>{tc("price")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("duration")}</TableHead>
                   <TableHead className="hidden lg:table-cell">ITBMS</TableHead>
                 </TableRow>
@@ -101,7 +104,7 @@ export default async function ServicesPage({
                     </TableCell>
                     <TableCell>{formatCurrency(Number(s.price))}</TableCell>
                     <TableCell className="hidden md:table-cell">{s.durationMin} min</TableCell>
-                    <TableCell className="hidden lg:table-cell">{s.isTaxExempt ? "Exento" : "7%"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{s.isTaxExempt ? tp("exempt") : "7%"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

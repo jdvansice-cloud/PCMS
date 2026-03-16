@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
+import { useTranslations } from "next-intl";
 import { createPet } from "./actions";
 
 type Owner = { id: string; firstName: string; lastName: string };
@@ -22,14 +23,17 @@ export function PetForm({
   owners: Owner[];
   defaultOwnerId?: string;
 }) {
+  const t = useTranslations("pets");
+  const tc = useTranslations("common");
+  const tf = useTranslations("form");
   const base = `/app/${slug}/pets`;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nueva Mascota">
+      <PageHeader title={t("newPet")}>
         <Link href={base}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
           </Button>
         </Link>
       </PageHeader>
@@ -39,10 +43,10 @@ export function PetForm({
           <form action={createPet} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Dueno *</Label>
+                <Label>{t("owner")} *</Label>
                 <Select name="ownerId" defaultValue={defaultOwnerId} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar dueno" />
+                    <SelectValue placeholder={tf("selectOwner")} />
                   </SelectTrigger>
                   <SelectContent>
                     {owners.map((o) => (
@@ -54,72 +58,72 @@ export function PetForm({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Nombre *</Label>
+                <Label>{tc("name")} *</Label>
                 <Input name="name" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Especie *</Label>
+                <Label>{t("species")} *</Label>
                 <Select name="species" defaultValue="DOG">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DOG">Perro</SelectItem>
-                    <SelectItem value="CAT">Gato</SelectItem>
-                    <SelectItem value="BIRD">Ave</SelectItem>
-                    <SelectItem value="REPTILE">Reptil</SelectItem>
-                    <SelectItem value="RODENT">Roedor</SelectItem>
-                    <SelectItem value="OTHER">Otro</SelectItem>
+                    <SelectItem value="DOG">{t("speciesLabels.DOG")}</SelectItem>
+                    <SelectItem value="CAT">{t("speciesLabels.CAT")}</SelectItem>
+                    <SelectItem value="BIRD">{t("speciesLabels.BIRD")}</SelectItem>
+                    <SelectItem value="REPTILE">{t("speciesLabels.REPTILE")}</SelectItem>
+                    <SelectItem value="RODENT">{t("speciesLabels.RODENT")}</SelectItem>
+                    <SelectItem value="OTHER">{t("speciesLabels.OTHER")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Raza</Label>
+                <Label>{t("breed")}</Label>
                 <Input name="breed" />
               </div>
               <div className="space-y-1.5">
-                <Label>Sexo</Label>
+                <Label>{t("sex")}</Label>
                 <Select name="sex" defaultValue="UNKNOWN">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MALE">Macho</SelectItem>
-                    <SelectItem value="FEMALE">Hembra</SelectItem>
-                    <SelectItem value="UNKNOWN">Desconocido</SelectItem>
+                    <SelectItem value="MALE">{t("sexLabels.MALE")}</SelectItem>
+                    <SelectItem value="FEMALE">{t("sexLabels.FEMALE")}</SelectItem>
+                    <SelectItem value="UNKNOWN">{t("sexLabels.UNKNOWN")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha de nacimiento</Label>
+                <Label>{t("dateOfBirth")}</Label>
                 <Input name="dateOfBirth" type="date" />
               </div>
               <div className="space-y-1.5">
-                <Label>Peso (kg)</Label>
+                <Label>{t("weight")}</Label>
                 <Input name="weight" type="number" step="0.01" />
               </div>
               <div className="space-y-1.5">
-                <Label>Color</Label>
+                <Label>{t("color")}</Label>
                 <Input name="color" />
               </div>
               <div className="space-y-1.5">
-                <Label>Microchip</Label>
+                <Label>{t("microchip")}</Label>
                 <Input name="microchipId" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Alergias</Label>
+              <Label>{t("allergies")}</Label>
               <Textarea name="allergies" rows={2} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>{tc("notes")}</Label>
               <Textarea name="notes" rows={2} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Link href={base}>
-                <Button type="button" variant="outline">Cancelar</Button>
+                <Button type="button" variant="outline">{tc("cancel")}</Button>
               </Link>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{tc("save")}</Button>
             </div>
           </form>
         </CardContent>

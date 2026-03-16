@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +51,9 @@ export function AppointmentDetail({
   slug: string;
 }) {
   const router = useRouter();
+  const tc = useTranslations("common");
+  const ta = useTranslations("appointments");
+  const tf = useTranslations("form");
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const base = `/app/${slug}/appointments`;
@@ -69,11 +73,11 @@ export function AppointmentDetail({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Cita - ${a.pet.name}`}>
+      <PageHeader title={`${ta("title")} - ${a.pet.name}`}>
         <div className="flex gap-2">
           <Link href={base}>
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
             </Button>
           </Link>
           <Button
@@ -92,7 +96,7 @@ export function AppointmentDetail({
           <CardContent className="p-4 sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Cliente:</span>{" "}
+                <span className="text-muted-foreground">{ta("client")}:</span>{" "}
                 <Link
                   href={`/app/${slug}/clients/${a.owner.id}`}
                   className="hover:underline font-medium"
@@ -101,7 +105,7 @@ export function AppointmentDetail({
                 </Link>
               </div>
               <div>
-                <span className="text-muted-foreground">Mascota:</span>{" "}
+                <span className="text-muted-foreground">{ta("pet")}:</span>{" "}
                 <Link
                   href={`/app/${slug}/pets/${a.pet.id}`}
                   className="hover:underline font-medium"
@@ -111,7 +115,7 @@ export function AppointmentDetail({
                 ({a.pet.species})
               </div>
               <div>
-                <span className="text-muted-foreground">Fecha:</span>{" "}
+                <span className="text-muted-foreground">{tc("date")}:</span>{" "}
                 {new Date(a.scheduledAt).toLocaleDateString("es-PA", {
                   weekday: "long",
                   year: "numeric",
@@ -120,35 +124,35 @@ export function AppointmentDetail({
                 })}
               </div>
               <div>
-                <span className="text-muted-foreground">Hora:</span>{" "}
+                <span className="text-muted-foreground">{tc("time")}:</span>{" "}
                 {new Date(a.scheduledAt).toLocaleTimeString("es-PA", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
               </div>
               <div>
-                <span className="text-muted-foreground">Tipo:</span>{" "}
-                <Badge variant="secondary">{a.type}</Badge>
+                <span className="text-muted-foreground">{ta("type")}:</span>{" "}
+                <Badge variant="secondary">{ta(`typeLabels.${a.type}`)}</Badge>
               </div>
               <div>
-                <span className="text-muted-foreground">Duración:</span> {a.durationMin} min
+                <span className="text-muted-foreground">{ta("duration")}:</span> {a.durationMin} min
               </div>
               <div>
-                <span className="text-muted-foreground">Veterinario:</span>{" "}
-                {a.vet ? `${a.vet.firstName} ${a.vet.lastName}` : "Sin asignar"}
+                <span className="text-muted-foreground">{ta("vet")}:</span>{" "}
+                {a.vet ? `${a.vet.firstName} ${a.vet.lastName}` : tf("unassigned")}
               </div>
               <div>
-                <span className="text-muted-foreground">Servicio:</span>{" "}
+                <span className="text-muted-foreground">{ta("service")}:</span>{" "}
                 {a.service?.name ?? "—"}
               </div>
               {a.reason && (
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">Motivo:</span> {a.reason}
+                  <span className="text-muted-foreground">{ta("reason")}:</span> {a.reason}
                 </div>
               )}
               {a.notes && (
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">Notas:</span> {a.notes}
+                  <span className="text-muted-foreground">{tc("notes")}:</span> {a.notes}
                 </div>
               )}
             </div>
@@ -157,29 +161,29 @@ export function AppointmentDetail({
 
         <Card className="shadow-sm border-0 shadow-black/5">
           <CardContent className="p-4 sm:p-6 space-y-4">
-            <h3 className="font-semibold text-sm">Estado</h3>
+            <h3 className="font-semibold text-sm">{tc("status")}</h3>
             <Badge className={`text-sm px-3 py-1 ${STATUS_COLORS[a.status] ?? ""}`}>
-              {a.status}
+              {ta(`statusLabels.${a.status}`)}
             </Badge>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Cambiar estado</label>
+              <label className="text-xs text-muted-foreground">{tf("changeStatus")}</label>
               <Select value={a.status} onValueChange={handleStatusChange} disabled={loading}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SCHEDULED">Programada</SelectItem>
-                  <SelectItem value="CONFIRMED">Confirmada</SelectItem>
-                  <SelectItem value="IN_PROGRESS">En Progreso</SelectItem>
-                  <SelectItem value="COMPLETED">Completada</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelada</SelectItem>
-                  <SelectItem value="NO_SHOW">No Asistió</SelectItem>
+                  <SelectItem value="SCHEDULED">{ta("statusLabels.SCHEDULED")}</SelectItem>
+                  <SelectItem value="CONFIRMED">{ta("statusLabels.CONFIRMED")}</SelectItem>
+                  <SelectItem value="IN_PROGRESS">{ta("statusLabels.IN_PROGRESS")}</SelectItem>
+                  <SelectItem value="COMPLETED">{ta("statusLabels.COMPLETED")}</SelectItem>
+                  <SelectItem value="CANCELLED">{ta("statusLabels.CANCELLED")}</SelectItem>
+                  <SelectItem value="NO_SHOW">{ta("statusLabels.NO_SHOW")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {a.owner.phone && (
               <div>
-                <label className="text-xs text-muted-foreground">Contacto</label>
+                <label className="text-xs text-muted-foreground">{tf("contact")}</label>
                 <p className="text-sm">{a.owner.phone}</p>
               </div>
             )}
@@ -190,8 +194,8 @@ export function AppointmentDetail({
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title="Eliminar Cita"
-        description="¿Estás seguro de que deseas eliminar esta cita?"
+        title={tf("deleteAppointment")}
+        description={tf("deleteAppointmentConfirm")}
         onConfirm={handleDelete}
         loading={loading}
       />

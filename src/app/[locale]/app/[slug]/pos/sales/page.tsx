@@ -23,6 +23,8 @@ export default async function SalesPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("pos");
+  const tc = await getTranslations("common");
+  const tf = await getTranslations("form");
   const base = `/app/${slug}/pos`;
 
   const { sales, totalPages } = await getSales(search, page);
@@ -32,12 +34,12 @@ export default async function SalesPage({
       <PageHeader title={t("salesHistory")}>
         <Link href={base}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver al POS
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tf("backToPos")}
           </Button>
         </Link>
       </PageHeader>
 
-      <SearchInput placeholder="Buscar por # de venta o cliente..." />
+      <SearchInput placeholder={t("searchItems")} />
 
       {sales.length === 0 ? (
         <Card className="shadow-sm border-0 shadow-black/5">
@@ -59,7 +61,7 @@ export default async function SalesPage({
                       <div>
                         <p className="text-sm font-medium">#{s.saleNumber}</p>
                         <p className="text-xs text-muted-foreground">
-                          {s.owner ? `${s.owner.firstName} ${s.owner.lastName}` : "Sin cliente"}
+                          {s.owner ? `${s.owner.firstName} ${s.owner.lastName}` : t("noClient")}
                         </p>
                       </div>
                       <span className="text-sm font-semibold">{formatCurrency(Number(s.total))}</span>
@@ -75,11 +77,11 @@ export default async function SalesPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Artículos</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                  <TableHead>{t("client")}</TableHead>
+                  <TableHead>{t("items")}</TableHead>
+                  <TableHead>{tc("total")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{tc("date")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

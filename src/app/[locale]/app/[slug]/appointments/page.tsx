@@ -31,6 +31,7 @@ export default async function AppointmentsPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("appointments");
+  const tc = await getTranslations("common");
 
   const { appointments, totalPages } = await getAppointments(search, page, sp.status);
 
@@ -102,7 +103,7 @@ export default async function AppointmentsPage({
                   <TableHead>{t("client")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("vet")}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t("type")}</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

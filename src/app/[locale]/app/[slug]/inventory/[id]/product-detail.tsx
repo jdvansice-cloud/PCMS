@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,10 @@ type Product = {
 
 export function ProductDetail({ product: p, slug }: { product: Product; slug: string }) {
   const router = useRouter();
+  const tc = useTranslations("common");
+  const ti = useTranslations("inventory");
+  const tf = useTranslations("form");
+  const tp = useTranslations("pos");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,13 +73,13 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
         <div className="flex gap-2">
           <Link href={base}>
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
             </Button>
           </Link>
           {!editing && (
             <>
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Edit className="h-4 w-4 mr-1" /> Editar
+                <Edit className="h-4 w-4 mr-1" /> {tc("edit")}
               </Button>
               <Button
                 variant="outline"
@@ -95,28 +100,28 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>Nombre *</Label>
+                  <Label>{tc("name")} *</Label>
                   <Input name="name" defaultValue={p.name} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Categoría</Label>
+                  <Label>{ti("category")}</Label>
                   <Select name="category" defaultValue={p.category}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FOOD">Alimento</SelectItem>
-                      <SelectItem value="MEDICATION">Medicamento</SelectItem>
-                      <SelectItem value="SUPPLEMENT">Suplemento</SelectItem>
-                      <SelectItem value="ACCESSORY">Accesorio</SelectItem>
-                      <SelectItem value="TOY">Juguete</SelectItem>
-                      <SelectItem value="HYGIENE">Higiene</SelectItem>
-                      <SelectItem value="OTHER">Otro</SelectItem>
+                      <SelectItem value="FOOD">{ti("categoryLabels.FOOD")}</SelectItem>
+                      <SelectItem value="MEDICATION">{ti("categoryLabels.MEDICATION")}</SelectItem>
+                      <SelectItem value="SUPPLEMENT">{ti("categoryLabels.SUPPLEMENT")}</SelectItem>
+                      <SelectItem value="ACCESSORY">{ti("categoryLabels.ACCESSORY")}</SelectItem>
+                      <SelectItem value="TOY">{ti("categoryLabels.TOY")}</SelectItem>
+                      <SelectItem value="HYGIENE">{ti("categoryLabels.HYGIENE")}</SelectItem>
+                      <SelectItem value="OTHER">{ti("categoryLabels.OTHER")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Precio (B/.) *</Label>
+                  <Label>{tf("priceBs")} *</Label>
                   <Input
                     name="price"
                     type="number"
@@ -126,7 +131,7 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Costo</Label>
+                  <Label>{ti("cost")}</Label>
                   <Input
                     name="cost"
                     type="number"
@@ -135,23 +140,23 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>SKU</Label>
+                  <Label>{ti("sku")}</Label>
                   <Input name="sku" defaultValue={p.sku ?? ""} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Código de barras</Label>
+                  <Label>{ti("barcode")}</Label>
                   <Input name="barcode" defaultValue={p.barcode ?? ""} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Stock</Label>
+                  <Label>{ti("stock")}</Label>
                   <Input name="stock" type="number" defaultValue={p.stock} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Stock mínimo</Label>
+                  <Label>{ti("minStock")}</Label>
                   <Input name="minStock" type="number" defaultValue={p.minStock} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Fecha de vencimiento</Label>
+                  <Label>{ti("expiration")}</Label>
                   <Input
                     name="expirationDate"
                     type="date"
@@ -163,12 +168,12 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Número de lote</Label>
+                  <Label>{tf("batchNumber")}</Label>
                   <Input name="batchNumber" defaultValue={p.batchNumber ?? ""} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Descripción</Label>
+                <Label>{tc("description")}</Label>
                 <Textarea name="description" defaultValue={p.description ?? ""} rows={2} />
               </div>
               <label className="flex items-center gap-2 text-sm">
@@ -178,65 +183,65 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
                   defaultChecked={p.isTaxExempt}
                   className="rounded"
                 />
-                Exento de ITBMS
+                {tf("taxExempt")}
               </label>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setEditing(false)}>
-                  Cancelar
+                  {tc("cancel")}
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar"}
+                  {loading ? tf("saving") : tc("save")}
                 </Button>
               </div>
             </form>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               <div>
-                <span className="text-muted-foreground">Categoría:</span>{" "}
-                <Badge variant="secondary">{p.category}</Badge>
+                <span className="text-muted-foreground">{ti("category")}:</span>{" "}
+                <Badge variant="secondary">{ti(`categoryLabels.${p.category}`)}</Badge>
               </div>
               <div>
-                <span className="text-muted-foreground">Precio:</span>{" "}
+                <span className="text-muted-foreground">{tc("price")}:</span>{" "}
                 {formatCurrency(Number(p.price))}
               </div>
               <div>
-                <span className="text-muted-foreground">Costo:</span>{" "}
+                <span className="text-muted-foreground">{ti("cost")}:</span>{" "}
                 {p.cost ? formatCurrency(Number(p.cost)) : "—"}
               </div>
               <div>
                 <span className="text-muted-foreground">ITBMS:</span>{" "}
-                {p.isTaxExempt ? "Exento" : "7%"}
+                {p.isTaxExempt ? tp("exempt") : "7%"}
               </div>
               <div>
-                <span className="text-muted-foreground">SKU:</span> {p.sku || "—"}
+                <span className="text-muted-foreground">{ti("sku")}:</span> {p.sku || "—"}
               </div>
               <div>
-                <span className="text-muted-foreground">Código de barras:</span>{" "}
+                <span className="text-muted-foreground">{ti("barcode")}:</span>{" "}
                 {p.barcode || "—"}
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Stock:</span> {p.stock}
+                <span className="text-muted-foreground">{ti("stock")}:</span> {p.stock}
                 {p.stock <= p.minStock && (
                   <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
                 )}
               </div>
               <div>
-                <span className="text-muted-foreground">Stock mín.:</span> {p.minStock}
+                <span className="text-muted-foreground">{ti("minStock")}:</span> {p.minStock}
               </div>
               {p.expirationDate && (
                 <div>
-                  <span className="text-muted-foreground">Vencimiento:</span>{" "}
+                  <span className="text-muted-foreground">{ti("expiration")}:</span>{" "}
                   {new Date(p.expirationDate).toLocaleDateString("es-PA")}
                 </div>
               )}
               {p.batchNumber && (
                 <div>
-                  <span className="text-muted-foreground">Lote:</span> {p.batchNumber}
+                  <span className="text-muted-foreground">{tf("batchNumber")}:</span> {p.batchNumber}
                 </div>
               )}
               {p.description && (
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">Descripción:</span> {p.description}
+                  <span className="text-muted-foreground">{tc("description")}:</span> {p.description}
                 </div>
               )}
             </div>
@@ -247,9 +252,9 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title="Desactivar Producto"
-        description="El producto será desactivado y no aparecerá en búsquedas."
-        confirmLabel="Desactivar"
+        title={tf("deactivateProduct")}
+        description={tf("deactivateProductConfirm")}
+        confirmLabel={tf("deactivateProduct")}
         onConfirm={handleDelete}
         loading={loading}
       />

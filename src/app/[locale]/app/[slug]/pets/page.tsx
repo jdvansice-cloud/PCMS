@@ -31,6 +31,7 @@ export default async function PetsPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("pets");
+  const tc = await getTranslations("common");
 
   const { pets, totalPages } = await getPets(search, page);
 
@@ -81,7 +82,7 @@ export default async function PetsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
                   <TableHead>{t("species")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("breed")}</TableHead>
                   <TableHead>{t("owner")}</TableHead>

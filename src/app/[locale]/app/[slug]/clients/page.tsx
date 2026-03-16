@@ -21,6 +21,7 @@ export default async function ClientsPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("clients");
+  const tc = await getTranslations("common");
 
   const { owners, totalPages } = await getOwners(search, page);
 
@@ -59,7 +60,7 @@ export default async function ClientsPage({
                         <p className="text-sm font-medium">{o.firstName} {o.lastName}</p>
                         <p className="text-xs text-muted-foreground">{o.phone || o.email || "—"}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">{o._count.pets} mascotas</span>
+                      <span className="text-xs text-muted-foreground">{o._count.pets} {t("petsCount").toLowerCase()}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -75,8 +76,8 @@ export default async function ClientsPage({
                   <TableHead>{t("firstName")}</TableHead>
                   <TableHead>{t("lastName")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("cedula")}</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead className="hidden lg:table-cell">Email</TableHead>
+                  <TableHead>{tc("phone")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{tc("email")}</TableHead>
                   <TableHead className="text-center">{t("petsCount")}</TableHead>
                 </TableRow>
               </TableHeader>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +22,16 @@ import { createProduct } from "../actions";
 export default function NewProductPage() {
   const { organization } = useTenant();
   const base = `/app/${organization.slug}/inventory`;
+  const tc = useTranslations("common");
+  const ti = useTranslations("inventory");
+  const tf = useTranslations("form");
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nuevo Producto">
+      <PageHeader title={ti("newProduct")}>
         <Link href={base}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
           </Button>
         </Link>
       </PageHeader>
@@ -37,74 +41,74 @@ export default function NewProductPage() {
           <form action={createProduct} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Nombre *</Label>
+                <Label>{tc("name")} *</Label>
                 <Input name="name" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Categoría *</Label>
+                <Label>{ti("category")} *</Label>
                 <Select name="category" defaultValue="OTHER">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FOOD">Alimento</SelectItem>
-                    <SelectItem value="MEDICATION">Medicamento</SelectItem>
-                    <SelectItem value="SUPPLEMENT">Suplemento</SelectItem>
-                    <SelectItem value="ACCESSORY">Accesorio</SelectItem>
-                    <SelectItem value="TOY">Juguete</SelectItem>
-                    <SelectItem value="HYGIENE">Higiene</SelectItem>
-                    <SelectItem value="OTHER">Otro</SelectItem>
+                    <SelectItem value="FOOD">{ti("categoryLabels.FOOD")}</SelectItem>
+                    <SelectItem value="MEDICATION">{ti("categoryLabels.MEDICATION")}</SelectItem>
+                    <SelectItem value="SUPPLEMENT">{ti("categoryLabels.SUPPLEMENT")}</SelectItem>
+                    <SelectItem value="ACCESSORY">{ti("categoryLabels.ACCESSORY")}</SelectItem>
+                    <SelectItem value="TOY">{ti("categoryLabels.TOY")}</SelectItem>
+                    <SelectItem value="HYGIENE">{ti("categoryLabels.HYGIENE")}</SelectItem>
+                    <SelectItem value="OTHER">{ti("categoryLabels.OTHER")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Precio (B/.) *</Label>
+                <Label>{tf("priceBs")} *</Label>
                 <Input name="price" type="number" step="0.01" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Costo</Label>
+                <Label>{ti("cost")}</Label>
                 <Input name="cost" type="number" step="0.01" />
               </div>
               <div className="space-y-1.5">
-                <Label>SKU</Label>
+                <Label>{ti("sku")}</Label>
                 <Input name="sku" />
               </div>
               <div className="space-y-1.5">
-                <Label>Código de barras</Label>
+                <Label>{ti("barcode")}</Label>
                 <Input name="barcode" />
               </div>
               <div className="space-y-1.5">
-                <Label>Stock inicial</Label>
+                <Label>{tf("initialStock")}</Label>
                 <Input name="stock" type="number" defaultValue="0" />
               </div>
               <div className="space-y-1.5">
-                <Label>Stock mínimo</Label>
+                <Label>{ti("minStock")}</Label>
                 <Input name="minStock" type="number" defaultValue="0" />
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha de vencimiento</Label>
+                <Label>{ti("expiration")}</Label>
                 <Input name="expirationDate" type="date" />
               </div>
               <div className="space-y-1.5">
-                <Label>Número de lote</Label>
+                <Label>{tf("batchNumber")}</Label>
                 <Input name="batchNumber" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Descripción</Label>
+              <Label>{tc("description")}</Label>
               <Textarea name="description" rows={2} />
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="isTaxExempt" className="rounded" />
-              Exento de ITBMS
+              {tf("taxExempt")}
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <Link href={base}>
                 <Button type="button" variant="outline">
-                  Cancelar
+                  {tc("cancel")}
                 </Button>
               </Link>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{tc("save")}</Button>
             </div>
           </form>
         </CardContent>

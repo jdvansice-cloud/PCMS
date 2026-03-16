@@ -33,6 +33,7 @@ export default async function InventoryPage({
   const search = sp.search ?? "";
   const page = Number(sp.page) || 1;
   const t = await getTranslations("inventory");
+  const tc = await getTranslations("common");
 
   const { products, totalPages } = await getProducts(search, page);
 
@@ -74,14 +75,14 @@ export default async function InventoryPage({
                           {p.stock <= p.minStock && (
                             <span className="text-xs text-destructive flex items-center gap-0.5">
                               <AlertTriangle className="h-3 w-3" />
-                              {p.stock === 0 ? "Agotado" : "Bajo"}
+                              {p.stock === 0 ? t("outOfStock") : t("lowStock")}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold">{formatCurrency(Number(p.price))}</p>
-                        <p className="text-xs text-muted-foreground">Stock: {p.stock}</p>
+                        <p className="text-xs text-muted-foreground">{t("stock")}: {p.stock}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -94,10 +95,10 @@ export default async function InventoryPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
                   <TableHead>{t("category")}</TableHead>
                   <TableHead>{t("sku")}</TableHead>
-                  <TableHead>Precio</TableHead>
+                  <TableHead>{tc("price")}</TableHead>
                   <TableHead>{t("stock")}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t("cost")}</TableHead>
                 </TableRow>

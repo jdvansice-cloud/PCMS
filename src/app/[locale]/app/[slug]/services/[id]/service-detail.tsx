@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,11 @@ type Service = {
 
 export function ServiceDetail({ service, slug }: { service: Service; slug: string }) {
   const router = useRouter();
+  const tc = useTranslations("common");
+  const ts = useTranslations("services");
+  const ta = useTranslations("appointments");
+  const tf = useTranslations("form");
+  const tp = useTranslations("pos");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,13 +63,13 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
         <div className="flex gap-2">
           <Link href={base}>
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
             </Button>
           </Link>
           {!editing && (
             <>
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Edit className="h-4 w-4 mr-1" /> Editar
+                <Edit className="h-4 w-4 mr-1" /> {tc("edit")}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setDeleting(true)} className="text-destructive">
                 <Trash2 className="h-4 w-4" />
@@ -79,60 +85,60 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>Nombre *</Label>
+                  <Label>{tc("name")} *</Label>
                   <Input name="name" defaultValue={service.name} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Tipo *</Label>
+                  <Label>{ta("type")} *</Label>
                   <Select name="type" defaultValue={service.type}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CONSULTATION">Consulta</SelectItem>
-                      <SelectItem value="VACCINATION">Vacunación</SelectItem>
-                      <SelectItem value="SURGERY">Cirugía</SelectItem>
-                      <SelectItem value="GROOMING">Peluquería</SelectItem>
-                      <SelectItem value="FOLLOW_UP">Seguimiento</SelectItem>
-                      <SelectItem value="EMERGENCY">Emergencia</SelectItem>
-                      <SelectItem value="OTHER">Otro</SelectItem>
+                      <SelectItem value="CONSULTATION">{ts("typeLabels.CONSULTATION")}</SelectItem>
+                      <SelectItem value="VACCINATION">{ts("typeLabels.VACCINATION")}</SelectItem>
+                      <SelectItem value="SURGERY">{ts("typeLabels.SURGERY")}</SelectItem>
+                      <SelectItem value="GROOMING">{ts("typeLabels.GROOMING")}</SelectItem>
+                      <SelectItem value="FOLLOW_UP">{ts("typeLabels.FOLLOW_UP")}</SelectItem>
+                      <SelectItem value="EMERGENCY">{ts("typeLabels.EMERGENCY")}</SelectItem>
+                      <SelectItem value="OTHER">{ts("typeLabels.OTHER")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Precio (B/.) *</Label>
+                  <Label>{tf("priceBs")} *</Label>
                   <Input name="price" type="number" step="0.01" defaultValue={Number(service.price)} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Duración (min) *</Label>
+                  <Label>{ts("duration")} (min) *</Label>
                   <Input name="durationMin" type="number" defaultValue={service.durationMin} required />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Descripción</Label>
+                <Label>{tc("description")}</Label>
                 <Textarea name="description" defaultValue={service.description ?? ""} rows={2} />
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="isTaxExempt" defaultChecked={service.isTaxExempt} className="rounded" />
-                  Exento de ITBMS
+                  {tf("taxExempt")}
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="isBookable" defaultChecked={service.isBookable} className="rounded" />
-                  Reservable en línea
+                  {tf("bookableOnline")}
                 </label>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
-                <Button type="submit" disabled={loading}>{loading ? "Guardando..." : "Guardar"}</Button>
+                <Button type="button" variant="outline" onClick={() => setEditing(false)}>{tc("cancel")}</Button>
+                <Button type="submit" disabled={loading}>{loading ? tf("saving") : tc("save")}</Button>
               </div>
             </form>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
-              <div><span className="text-muted-foreground">Tipo:</span> <Badge variant="secondary">{service.type}</Badge></div>
-              <div><span className="text-muted-foreground">Precio:</span> {formatCurrency(Number(service.price))}</div>
-              <div><span className="text-muted-foreground">Duración:</span> {service.durationMin} min</div>
-              <div><span className="text-muted-foreground">ITBMS:</span> {service.isTaxExempt ? "Exento" : "7%"}</div>
-              <div><span className="text-muted-foreground">Reservable:</span> {service.isBookable ? "Sí" : "No"}</div>
-              {service.description && <div className="sm:col-span-2"><span className="text-muted-foreground">Descripción:</span> {service.description}</div>}
+              <div><span className="text-muted-foreground">{ta("type")}:</span> <Badge variant="secondary">{ts(`typeLabels.${service.type}`)}</Badge></div>
+              <div><span className="text-muted-foreground">{tc("price")}:</span> {formatCurrency(Number(service.price))}</div>
+              <div><span className="text-muted-foreground">{ts("duration")}:</span> {service.durationMin} min</div>
+              <div><span className="text-muted-foreground">ITBMS:</span> {service.isTaxExempt ? tp("exempt") : "7%"}</div>
+              <div><span className="text-muted-foreground">{ts("bookable")}:</span> {service.isBookable ? tc("yes") : tc("no")}</div>
+              {service.description && <div className="sm:col-span-2"><span className="text-muted-foreground">{tc("description")}:</span> {service.description}</div>}
             </div>
           )}
         </CardContent>
@@ -141,9 +147,9 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title="Desactivar Servicio"
-        description="El servicio será desactivado y no aparecerá en las búsquedas."
-        confirmLabel="Desactivar"
+        title={tf("deactivateService")}
+        description={tf("deactivateServiceConfirm")}
+        confirmLabel={tf("deactivateService")}
         onConfirm={handleDelete}
         loading={loading}
       />

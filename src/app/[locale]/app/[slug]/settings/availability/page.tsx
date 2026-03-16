@@ -2,24 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { getBusinessHours, updateBusinessHours } from "../actions";
 
-const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
 type DayHours = { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean };
 
 export default function AvailabilityPage() {
   const { organization } = useTenant();
   const router = useRouter();
+  const tc = useTranslations("common");
+  const tf = useTranslations("form");
+  const td = useTranslations("days");
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState<DayHours[]>(
     Array.from({ length: 7 }, (_, i) => ({
@@ -60,10 +61,10 @@ export default function AvailabilityPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Horario de Atención">
+      <PageHeader title={tf("businessHours")}>
         <Link href={`/app/${organization.slug}/settings`}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
           </Button>
         </Link>
       </PageHeader>
@@ -79,7 +80,7 @@ export default function AvailabilityPage() {
                     onCheckedChange={(v) => updateDay(idx, "isClosed", !v)}
                   />
                   <span className={`text-sm font-medium ${day.isClosed ? "text-muted-foreground" : ""}`}>
-                    {DAYS[idx]}
+                    {td(String(idx))}
                   </span>
                 </div>
                 {!day.isClosed && (
@@ -90,7 +91,7 @@ export default function AvailabilityPage() {
                       onChange={(e) => updateDay(idx, "openTime", e.target.value)}
                       className="w-28"
                     />
-                    <span className="text-muted-foreground text-sm">a</span>
+                    <span className="text-muted-foreground text-sm">{tf("to")}</span>
                     <Input
                       type="time"
                       value={day.closeTime}
@@ -100,16 +101,16 @@ export default function AvailabilityPage() {
                   </div>
                 )}
                 {day.isClosed && (
-                  <span className="text-sm text-muted-foreground">Cerrado</span>
+                  <span className="text-sm text-muted-foreground">{tf("closed")}</span>
                 )}
               </div>
             ))}
             <div className="flex justify-end gap-2 pt-4">
               <Link href={`/app/${organization.slug}/settings`}>
-                <Button type="button" variant="outline">Cancelar</Button>
+                <Button type="button" variant="outline">{tc("cancel")}</Button>
               </Link>
               <Button type="submit" disabled={loading}>
-                {loading ? "Guardando..." : "Guardar"}
+                {loading ? tf("saving") : tc("save")}
               </Button>
             </div>
           </form>

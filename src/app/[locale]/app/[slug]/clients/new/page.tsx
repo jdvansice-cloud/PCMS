@@ -10,18 +10,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
+import { useTranslations } from "next-intl";
 import { createOwner } from "../actions";
 
 export default function NewClientPage() {
   const { organization } = useTenant();
   const base = `/app/${organization.slug}/clients`;
+  const t = useTranslations("clients");
+  const tc = useTranslations("common");
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nuevo Cliente">
+      <PageHeader title={t("newClient")}>
         <Link href={base}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
           </Button>
         </Link>
       </PageHeader>
@@ -31,47 +34,47 @@ export default function NewClientPage() {
           <form action={createOwner} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Nombre *</Label>
+                <Label>{t("firstName")} *</Label>
                 <Input name="firstName" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Apellido *</Label>
+                <Label>{t("lastName")} *</Label>
                 <Input name="lastName" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Cédula</Label>
+                <Label>{t("cedula")}</Label>
                 <Input name="cedula" />
               </div>
               <div className="space-y-1.5">
-                <Label>RUC</Label>
+                <Label>{t("ruc")}</Label>
                 <Input name="ruc" />
               </div>
               <div className="space-y-1.5">
-                <Label>Email</Label>
+                <Label>{tc("email")}</Label>
                 <Input name="email" type="email" />
               </div>
               <div className="space-y-1.5">
-                <Label>Teléfono</Label>
+                <Label>{tc("phone")}</Label>
                 <Input name="phone" />
               </div>
               <div className="space-y-1.5">
-                <Label>WhatsApp</Label>
+                <Label>{t("whatsapp")}</Label>
                 <Input name="whatsapp" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Dirección</Label>
+              <Label>{tc("address")}</Label>
               <Textarea name="address" rows={2} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>{tc("notes")}</Label>
               <Textarea name="notes" rows={2} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Link href={base}>
-                <Button type="button" variant="outline">Cancelar</Button>
+                <Button type="button" variant="outline">{tc("cancel")}</Button>
               </Link>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{tc("save")}</Button>
             </div>
           </form>
         </CardContent>

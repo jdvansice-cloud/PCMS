@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useTranslations } from "next-intl";
 import { updateOwner, deleteOwner } from "../actions";
 
 type Owner = {
@@ -34,6 +35,10 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const base = `/app/${slug}/clients`;
+  const t = useTranslations("clients");
+  const tc = useTranslations("common");
+  const tf = useTranslations("form");
+  const tp = useTranslations("pets");
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,13 +63,13 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
         <div className="flex gap-2">
           <Link href={base}>
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
             </Button>
           </Link>
           {!editing && (
             <>
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Edit className="h-4 w-4 mr-1" /> Editar
+                <Edit className="h-4 w-4 mr-1" /> {tc("edit")}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setDeleting(true)} className="text-destructive">
                 <Trash2 className="h-4 w-4" />
@@ -81,59 +86,59 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Nombre *</Label>
+                    <Label>{t("firstName")} *</Label>
                     <Input name="firstName" defaultValue={owner.firstName} required />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Apellido *</Label>
+                    <Label>{t("lastName")} *</Label>
                     <Input name="lastName" defaultValue={owner.lastName} required />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Cedula</Label>
+                    <Label>{t("cedula")}</Label>
                     <Input name="cedula" defaultValue={owner.cedula ?? ""} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>RUC</Label>
+                    <Label>{t("ruc")}</Label>
                     <Input name="ruc" defaultValue={owner.ruc ?? ""} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Email</Label>
+                    <Label>{tc("email")}</Label>
                     <Input name="email" type="email" defaultValue={owner.email ?? ""} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Teléfono</Label>
+                    <Label>{tc("phone")}</Label>
                     <Input name="phone" defaultValue={owner.phone ?? ""} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>WhatsApp</Label>
+                    <Label>{t("whatsapp")}</Label>
                     <Input name="whatsapp" defaultValue={owner.whatsapp ?? ""} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Dirección</Label>
+                  <Label>{tc("address")}</Label>
                   <Textarea name="address" defaultValue={owner.address ?? ""} rows={2} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Notas</Label>
+                  <Label>{tc("notes")}</Label>
                   <Textarea name="notes" defaultValue={owner.notes ?? ""} rows={2} />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
-                  <Button type="submit" disabled={loading}>{loading ? "Guardando..." : "Guardar"}</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>{tc("cancel")}</Button>
+                  <Button type="submit" disabled={loading}>{loading ? tf("saving") : tc("save")}</Button>
                 </div>
               </form>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                <div><span className="text-muted-foreground">Cédula:</span> {owner.cedula || "—"}</div>
-                <div><span className="text-muted-foreground">RUC:</span> {owner.ruc || "—"}</div>
-                <div><span className="text-muted-foreground">Email:</span> {owner.email || "—"}</div>
-                <div><span className="text-muted-foreground">Teléfono:</span> {owner.phone || "—"}</div>
-                <div><span className="text-muted-foreground">WhatsApp:</span> {owner.whatsapp || "—"}</div>
+                <div><span className="text-muted-foreground">{t("cedula")}:</span> {owner.cedula || "—"}</div>
+                <div><span className="text-muted-foreground">{t("ruc")}:</span> {owner.ruc || "—"}</div>
+                <div><span className="text-muted-foreground">{tc("email")}:</span> {owner.email || "—"}</div>
+                <div><span className="text-muted-foreground">{tc("phone")}:</span> {owner.phone || "—"}</div>
+                <div><span className="text-muted-foreground">{t("whatsapp")}:</span> {owner.whatsapp || "—"}</div>
                 {owner.address && (
-                  <div className="sm:col-span-2"><span className="text-muted-foreground">Dirección:</span> {owner.address}</div>
+                  <div className="sm:col-span-2"><span className="text-muted-foreground">{tc("address")}:</span> {owner.address}</div>
                 )}
                 {owner.notes && (
-                  <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {owner.notes}</div>
+                  <div className="sm:col-span-2"><span className="text-muted-foreground">{tc("notes")}:</span> {owner.notes}</div>
                 )}
               </div>
             )}
@@ -144,14 +149,14 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                <Dog className="h-4 w-4" /> Mascotas
+                <Dog className="h-4 w-4" /> {tp("title")}
               </h3>
               <Link href={`/app/${slug}/pets/new?ownerId=${owner.id}`}>
-                <Button variant="outline" size="sm">+ Agregar</Button>
+                <Button variant="outline" size="sm">+ {tc("add")}</Button>
               </Link>
             </div>
             {owner.pets.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sin mascotas registradas</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{tf("noPetsRegistered")}</p>
             ) : (
               <div className="space-y-2">
                 {owner.pets.map((pet) => (
@@ -171,8 +176,8 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title="Eliminar Cliente"
-        description="¿Estás seguro? Se eliminarán todos los datos de este cliente."
+        title={tf("deleteClient")}
+        description={tf("deleteClientConfirm")}
         onConfirm={handleDelete}
         loading={loading}
       />
