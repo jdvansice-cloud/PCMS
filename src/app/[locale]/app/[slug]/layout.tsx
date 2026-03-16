@@ -1,5 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getUserPermissions } from "@/lib/permissions";
@@ -49,12 +50,10 @@ export default async function TenantLayout({
 
   if (!org) notFound();
 
-  // If org locale doesn't match URL locale, redirect to the API route that
-  // sets the NEXT_LOCALE cookie and then redirects to the correct locale URL.
-  const orgLocale = org.locale ?? "es";
-  if (locale !== orgLocale) {
-    redirect(`/api/set-locale?locale=${orgLocale}&redirect=/app/${slug}`);
-  }
+  // Use the org's saved locale for translations, regardless of URL locale.
+  // This ensures the UI language matches the org setting, not the browser preference.
+  const orgLocale = (org.locale ?? "es") as "es" | "en";
+  const messages = (await import(`../../../../../messages/${orgLocale}.json`)).default;
 
   const permissions = await getUserPermissions(auth.user.userType, auth.user.roleId);
 
@@ -83,13 +82,15 @@ export default async function TenantLayout({
   };
 
   return (
-    <TenantProvider value={tenantValue}>
-      <div className="flex h-screen">
-        <AppSidebar slug={slug} />
-        <main className="flex-1 overflow-auto bg-background">
-          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
-        </main>
-      </div>
-    </TenantProvider>
+    <NextIntlClientProvider locale={orgLocale} messages={messages}>
+      <TenantProvider value={tenantValue}>
+        <div className="flex h-screen">
+          <AppSidebar slug={slug} />
+          <main className="flex-1 overflow-auto bg-background">
+            <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+          </main>
+        </div>
+      </TenantProvider>
+    </NextIntlClientProvider>
   );
 }
