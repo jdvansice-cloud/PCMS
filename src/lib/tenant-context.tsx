@@ -130,6 +130,11 @@ export function TenantProvider({
     root.style.setProperty("--brand-sidebar-active", lightenHex(sidebarBg, 0.15));
     root.style.setProperty("--brand-sidebar-border", lightenHex(sidebarBg, 0.08));
 
+    // Font — set on documentElement so portals (dialogs, popovers) inherit it
+    const fontFamily = branding.fontFamily || "Inter";
+    root.style.setProperty("--font-sans", `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`);
+    root.style.fontFamily = `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`;
+
     // Dark mode
     if (branding.darkMode) {
       root.classList.add("dark");

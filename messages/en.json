@@ -329,6 +329,7 @@
     "availability": "Availability",
     "availabilityDesc": "Clinic and staff schedules",
     "branches": "Stores",
+    "branchesTitle": "Stores",
     "branchesDesc": "Manage stores and assign users",
     "newBranch": "New Store",
     "editBranch": "Edit Store",

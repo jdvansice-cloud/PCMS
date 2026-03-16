@@ -90,7 +90,7 @@ export default async function TenantLayout({
       <TenantProvider value={tenantValue}>
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href={googleFontUrl} />
-        <div className="flex h-screen" style={{ fontFamily: `"${fontFamily}", ui-sans-serif, system-ui, sans-serif` }}>
+        <div className="flex h-screen">
           <AppSidebar slug={slug} />
           <main className="flex-1 overflow-auto bg-background">
             <div className="p-5 sm:p-7 lg:p-10">{children}</div>

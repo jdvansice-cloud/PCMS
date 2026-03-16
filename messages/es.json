@@ -329,6 +329,7 @@
     "availability": "Disponibilidad",
     "availabilityDesc": "Horarios de la clínica y personal",
     "branches": "Sucursales",
+    "branchesTitle": "Sucursales",
     "branchesDesc": "Administrar sucursales y asignar usuarios",
     "newBranch": "Nueva Sucursal",
     "editBranch": "Editar Sucursal",
