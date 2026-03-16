@@ -114,14 +114,17 @@ export async function createSale(input: {
     },
   });
 
-  // Decrement product stock
-  for (const item of input.items) {
-    if (item.productId) {
-      await prisma.product.update({
-        where: { id: item.productId },
+  // Decrement product stock (batched in a single transaction)
+  const stockUpdates = input.items
+    .filter((item) => item.productId)
+    .map((item) =>
+      prisma.product.update({
+        where: { id: item.productId! },
         data: { stock: { decrement: item.quantity } },
-      });
-    }
+      }),
+    );
+  if (stockUpdates.length > 0) {
+    await prisma.$transaction(stockUpdates);
   }
 
   await createAuditLog({

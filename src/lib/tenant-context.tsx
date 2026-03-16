@@ -52,7 +52,7 @@ function canCheck(permissions: PermissionMap, action: PermAction, section: Secti
   }
 }
 
-/** Convert hex to an oklch-ish CSS color (just use hex directly for dynamic branding) */
+/** Convert hex to RGB components */
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;
@@ -79,6 +79,38 @@ function lightenHex(hex: string, factor: number): string {
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
+/** Pre-compute all CSS custom properties from branding (memoized) */
+function computeBrandingVars(branding: Branding): Record<string, string> {
+  const sidebarBg = branding.sidebarColor || darkenHex(branding.primaryColor, 0.35);
+  const fontFamily = branding.fontFamily || "Inter";
+
+  return {
+    // Primary
+    "--brand-primary": branding.primaryColor,
+    "--brand-primary-light": lightenHex(branding.primaryColor, 0.85),
+    "--brand-primary-foreground": "#ffffff",
+    "--primary": branding.primaryColor,
+    "--primary-foreground": "#ffffff",
+    "--ring": branding.primaryColor,
+    "--accent": lightenHex(branding.primaryColor, 0.85),
+    "--accent-foreground": darkenHex(branding.primaryColor, 0.3),
+    // Secondary
+    "--brand-secondary": branding.secondaryColor,
+    "--brand-secondary-light": lightenHex(branding.secondaryColor, 0.85),
+    "--secondary": branding.secondaryColor,
+    "--secondary-foreground": "#ffffff",
+    // Accent
+    ...(branding.accentColor ? { "--brand-accent": branding.accentColor } : {}),
+    // Sidebar
+    "--brand-sidebar": sidebarBg,
+    "--brand-sidebar-hover": lightenHex(sidebarBg, 0.1),
+    "--brand-sidebar-active": lightenHex(sidebarBg, 0.15),
+    "--brand-sidebar-border": lightenHex(sidebarBg, 0.08),
+    // Font
+    "--font-sans": `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`,
+  };
+}
+
 export function TenantProvider({
   children,
   value,
@@ -92,56 +124,28 @@ export function TenantProvider({
       can: (action: PermAction, section: Section) =>
         canCheck(value.permissions, action, section),
     }),
-    [value]
+    [value.user, value.organization, value.branding, value.permissions],
   );
 
-  // Apply branding as CSS custom properties
+  // Memoize all CSS variable computations — only recompute when branding changes
+  const cssVars = useMemo(() => computeBrandingVars(value.branding), [value.branding]);
+
+  // Apply branding as CSS custom properties on documentElement
   useEffect(() => {
-    const { branding } = value;
     const root = document.documentElement;
 
-    // Primary color and variants
-    root.style.setProperty("--brand-primary", branding.primaryColor);
-    root.style.setProperty("--brand-primary-light", lightenHex(branding.primaryColor, 0.85));
-    root.style.setProperty("--brand-primary-foreground", "#ffffff");
-
-    // Override shadcn CSS variables so buttons/badges pick up branding
-    root.style.setProperty("--primary", branding.primaryColor);
-    root.style.setProperty("--primary-foreground", "#ffffff");
-    root.style.setProperty("--ring", branding.primaryColor);
-    root.style.setProperty("--accent", lightenHex(branding.primaryColor, 0.85));
-    root.style.setProperty("--accent-foreground", darkenHex(branding.primaryColor, 0.3));
-
-    // Secondary color
-    root.style.setProperty("--brand-secondary", branding.secondaryColor);
-    root.style.setProperty("--brand-secondary-light", lightenHex(branding.secondaryColor, 0.85));
-    root.style.setProperty("--secondary", branding.secondaryColor);
-    root.style.setProperty("--secondary-foreground", "#ffffff");
-
-    // Accent
-    if (branding.accentColor) {
-      root.style.setProperty("--brand-accent", branding.accentColor);
+    // Batch all CSS variable updates
+    for (const [key, val] of Object.entries(cssVars)) {
+      root.style.setProperty(key, val);
     }
 
-    // Sidebar
-    const sidebarBg = branding.sidebarColor || darkenHex(branding.primaryColor, 0.35);
-    root.style.setProperty("--brand-sidebar", sidebarBg);
-    root.style.setProperty("--brand-sidebar-hover", lightenHex(sidebarBg, 0.1));
-    root.style.setProperty("--brand-sidebar-active", lightenHex(sidebarBg, 0.15));
-    root.style.setProperty("--brand-sidebar-border", lightenHex(sidebarBg, 0.08));
-
-    // Font — set on documentElement so portals (dialogs, popovers) inherit it
-    const fontFamily = branding.fontFamily || "Inter";
-    root.style.setProperty("--font-sans", `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`);
+    // Font on root element so portals (dialogs, popovers) inherit it
+    const fontFamily = value.branding.fontFamily || "Inter";
     root.style.fontFamily = `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`;
 
     // Dark mode
-    if (branding.darkMode) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [value]);
+    root.classList.toggle("dark", value.branding.darkMode);
+  }, [cssVars, value.branding.fontFamily, value.branding.darkMode]);
 
   return (
     <TenantContext.Provider value={contextValue}>{children}</TenantContext.Provider>

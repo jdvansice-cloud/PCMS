@@ -178,13 +178,15 @@ export async function updateBusinessHours(
   });
   if (!branch) throw new Error("No branch found");
 
-  for (const h of hours) {
-    await prisma.businessHours.upsert({
-      where: { branchId_dayOfWeek: { branchId: branch.id, dayOfWeek: h.dayOfWeek } },
-      update: { openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed },
-      create: { branchId: branch.id, dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed },
-    });
-  }
+  await prisma.$transaction(
+    hours.map((h) =>
+      prisma.businessHours.upsert({
+        where: { branchId_dayOfWeek: { branchId: branch.id, dayOfWeek: h.dayOfWeek } },
+        update: { openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed },
+        create: { branchId: branch.id, dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime, isClosed: h.isClosed },
+      }),
+    ),
+  );
 
   await createAuditLog({
     organizationId,
@@ -642,49 +644,74 @@ export async function updateBranchAssignments(
   });
   if (!branch) throw new Error("Branch not found");
 
+  // Validate all users in a single query instead of per-user
+  const validUsers = await prisma.user.findMany({
+    where: { id: { in: assignments.map((a) => a.userId) }, organizationId },
+    select: { id: true, branchId: true },
+  });
+  const validUserMap = new Map(validUsers.map((u) => [u.id, u]));
+
+  // Phase 1: Batch upserts and deletes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const txOps: any[] = [];
+
   for (const a of assignments) {
-    const targetUser = await prisma.user.findFirst({
-      where: { id: a.userId, organizationId },
-    });
-    if (!targetUser) continue;
+    if (!validUserMap.has(a.userId)) continue;
 
     if (a.isAssigned) {
-      // Upsert the assignment
-      await prisma.userBranch.upsert({
-        where: { userId_branchId: { userId: a.userId, branchId } },
-        update: { isDefault: a.isDefault },
-        create: { userId: a.userId, branchId, isDefault: a.isDefault },
-      });
-
-      // If this is set as default, clear default from other branches for this user
+      txOps.push(
+        prisma.userBranch.upsert({
+          where: { userId_branchId: { userId: a.userId, branchId } },
+          update: { isDefault: a.isDefault },
+          create: { userId: a.userId, branchId, isDefault: a.isDefault },
+        }),
+      );
       if (a.isDefault) {
-        await prisma.userBranch.updateMany({
-          where: { userId: a.userId, branchId: { not: branchId } },
-          data: { isDefault: false },
-        });
-        // Sync User.branchId
-        await prisma.user.update({
-          where: { id: a.userId },
-          data: { branchId },
-        });
+        txOps.push(
+          prisma.userBranch.updateMany({
+            where: { userId: a.userId, branchId: { not: branchId } },
+            data: { isDefault: false },
+          }),
+        );
+        txOps.push(
+          prisma.user.update({
+            where: { id: a.userId },
+            data: { branchId },
+          }),
+        );
       }
     } else {
-      // Remove the assignment
-      await prisma.userBranch.deleteMany({
-        where: { userId: a.userId, branchId },
-      });
-
-      // If user's active branch was this one, set to their remaining default
-      if (targetUser.branchId === branchId) {
-        const remaining = await prisma.userBranch.findFirst({
-          where: { userId: a.userId, isDefault: true },
-        });
-        await prisma.user.update({
-          where: { id: a.userId },
-          data: { branchId: remaining?.branchId ?? null },
-        });
-      }
+      txOps.push(
+        prisma.userBranch.deleteMany({
+          where: { userId: a.userId, branchId },
+        }),
+      );
     }
+  }
+
+  if (txOps.length > 0) {
+    await prisma.$transaction(txOps);
+  }
+
+  // Phase 2: Fix branchId for removed users whose active branch was this one
+  const removedUsers = assignments
+    .filter((a) => !a.isAssigned && validUserMap.get(a.userId)?.branchId === branchId)
+    .map((a) => a.userId);
+
+  if (removedUsers.length > 0) {
+    const fallbacks = await prisma.userBranch.findMany({
+      where: { userId: { in: removedUsers }, isDefault: true },
+      select: { userId: true, branchId: true },
+    });
+    const fallbackMap = new Map(fallbacks.map((f) => [f.userId, f.branchId]));
+
+    const fixOps = removedUsers.map((uid) =>
+      prisma.user.update({
+        where: { id: uid },
+        data: { branchId: fallbackMap.get(uid) ?? null },
+      }),
+    );
+    await prisma.$transaction(fixOps);
   }
 
   await createAuditLog({

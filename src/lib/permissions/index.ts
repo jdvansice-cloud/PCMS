@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Section, UserType } from "@/generated/prisma/client";
 
@@ -37,7 +38,7 @@ function fullAccess(): PermissionMap {
   return map;
 }
 
-export async function getUserPermissions(
+export const getUserPermissions = cache(async function getUserPermissions(
   userType: UserType,
   roleId: string | null,
 ): Promise<PermissionMap> {
@@ -73,7 +74,7 @@ export async function getUserPermissions(
   }
 
   return map;
-}
+});
 
 export function can(
   permissions: PermissionMap,

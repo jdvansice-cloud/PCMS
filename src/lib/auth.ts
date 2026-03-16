@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,7 @@ export type AuthContext = {
   slug: string;
 };
 
-export async function getCurrentUser(): Promise<AuthContext> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<AuthContext> {
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -69,7 +70,7 @@ export async function getCurrentUser(): Promise<AuthContext> {
     organizationId: dbUser.organizationId,
     slug: dbUser.organization.slug,
   };
-}
+});
 
 export async function isPlatformAdmin(): Promise<boolean> {
   const supabase = await createClient();

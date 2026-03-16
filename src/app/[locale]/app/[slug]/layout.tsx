@@ -24,38 +24,42 @@ export default async function TenantLayout({
     notFound();
   }
 
-  // Load org data + branding in one query
-  const org = await prisma.organization.findUnique({
-    where: { id: auth.organizationId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-      timezone: true,
-      currency: true,
-      locale: true,
-      branding: {
-        select: {
-          primaryColor: true,
-          secondaryColor: true,
-          accentColor: true,
-          sidebarColor: true,
-          fontFamily: true,
-          darkMode: true,
+  // Run org query and permissions query in parallel (both depend on auth, but not each other)
+  const [org, permissions] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: auth.organizationId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo: true,
+        timezone: true,
+        currency: true,
+        locale: true,
+        branding: {
+          select: {
+            primaryColor: true,
+            secondaryColor: true,
+            accentColor: true,
+            sidebarColor: true,
+            fontFamily: true,
+            darkMode: true,
+          },
         },
       },
-    },
-  });
+    }),
+    getUserPermissions(auth.user.userType, auth.user.roleId),
+  ]);
 
   if (!org) notFound();
 
   // Use the org's saved locale for translations, regardless of URL locale.
-  // This ensures the UI language matches the org setting, not the browser preference.
+  // Static branches allow webpack to resolve both paths at build time.
   const orgLocale = (org.locale ?? "es") as "es" | "en";
-  const messages = (await import(`../../../../../messages/${orgLocale}.json`)).default;
-
-  const permissions = await getUserPermissions(auth.user.userType, auth.user.roleId);
+  const messages =
+    orgLocale === "en"
+      ? (await import("../../../../../messages/en.json")).default
+      : (await import("../../../../../messages/es.json")).default;
 
   const branding = org.branding ?? {
     primaryColor: "#14b8a6",
