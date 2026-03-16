@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createAuditLog, diffChanges } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { ALL_SECTIONS } from "@/lib/permissions";
 import type { Section, UserType } from "@/generated/prisma/client";
 
@@ -72,6 +73,11 @@ export async function updateCompanyInfo(data: {
       });
     }
   }
+
+  // Set NEXT_LOCALE cookie so next-intl middleware uses the org's locale
+  const newLocale = data.locale || "es";
+  const cookieStore = await cookies();
+  cookieStore.set("NEXT_LOCALE", newLocale, { path: "/", maxAge: 60 * 60 * 24 * 365 });
 
   revalidatePath(`/app/${slug}/settings`);
   return { success: true };

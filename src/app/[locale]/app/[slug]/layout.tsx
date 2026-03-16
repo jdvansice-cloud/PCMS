@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -48,6 +48,17 @@ export default async function TenantLayout({
   });
 
   if (!org) notFound();
+
+  // If org locale doesn't match URL locale, set the NEXT_LOCALE cookie and redirect.
+  // next-intl middleware reads this cookie to determine locale on subsequent requests.
+  const orgLocale = org.locale ?? "es";
+  if (locale !== orgLocale) {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.set("NEXT_LOCALE", orgLocale, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    const prefix = orgLocale === "es" ? "" : `/${orgLocale}`;
+    redirect(`${prefix}/app/${slug}`);
+  }
 
   const permissions = await getUserPermissions(auth.user.userType, auth.user.roleId);
 
