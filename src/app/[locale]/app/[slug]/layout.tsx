@@ -81,10 +81,16 @@ export default async function TenantLayout({
     permissions,
   };
 
+  // Load the branding font from Google Fonts
+  const fontFamily = branding.fontFamily || "Inter";
+  const googleFontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+
   return (
     <NextIntlClientProvider locale={orgLocale} messages={messages}>
       <TenantProvider value={tenantValue}>
-        <div className="flex h-screen">
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="stylesheet" href={googleFontUrl} />
+        <div className="flex h-screen" style={{ fontFamily: `"${fontFamily}", ui-sans-serif, system-ui, sans-serif` }}>
           <AppSidebar slug={slug} />
           <main className="flex-1 overflow-auto bg-background">
             <div className="p-4 sm:p-6 lg:p-8">{children}</div>
