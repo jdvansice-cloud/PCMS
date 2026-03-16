@@ -9,6 +9,7 @@
     "loading": "Loading...",
     "noResults": "No results found",
     "confirm": "Confirm",
+    "confirmDescription": "Are you sure? This action cannot be undone.",
     "back": "Back",
     "next": "Next",
     "previous": "Previous",

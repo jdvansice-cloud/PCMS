@@ -9,6 +9,7 @@
     "loading": "Cargando...",
     "noResults": "No se encontraron resultados",
     "confirm": "Confirmar",
+    "confirmDescription": "¿Estás seguro? Esta acción no se puede deshacer.",
     "back": "Volver",
     "next": "Siguiente",
     "previous": "Anterior",

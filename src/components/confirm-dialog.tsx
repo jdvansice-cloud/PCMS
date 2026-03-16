@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -13,9 +14,9 @@ import { Button } from "@/components/ui/button";
 export function ConfirmDialog({
   open,
   onOpenChange,
-  title = "Confirmar acción",
-  description = "¿Estás seguro? Esta acción no se puede deshacer.",
-  confirmLabel = "Eliminar",
+  title,
+  description,
+  confirmLabel,
   onConfirm,
   loading = false,
 }: {
@@ -27,12 +28,16 @@ export function ConfirmDialog({
   onConfirm: () => void;
   loading?: boolean;
 }) {
+  const tc = useTranslations("common");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle>{title || tc("confirm")}</DialogTitle>
+          <DialogDescription>
+            {description || tc("confirmDescription")}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
@@ -40,14 +45,14 @@ export function ConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
-            Cancelar
+            {tc("cancel")}
           </Button>
           <Button
             variant="destructive"
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Eliminando..." : confirmLabel}
+            {loading ? tc("loading") : (confirmLabel || tc("delete"))}
           </Button>
         </DialogFooter>
       </DialogContent>
