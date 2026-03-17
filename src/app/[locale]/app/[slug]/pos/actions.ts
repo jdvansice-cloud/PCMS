@@ -12,7 +12,7 @@ export async function getPosData() {
 
   const [products, services, owners] = await Promise.all([
     prisma.product.findMany({
-      where: { organizationId, isActive: true, stock: { gt: 0 } },
+      where: { organizationId, isActive: true },
       select: {
         id: true,
         name: true,
