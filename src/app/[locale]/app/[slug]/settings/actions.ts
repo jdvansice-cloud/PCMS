@@ -6,7 +6,7 @@ import { createAuditLog, diffChanges } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { ALL_SECTIONS } from "@/lib/permissions";
-import type { Section, UserType, GiftCardStatus, PromotionType, LoyaltyTxType } from "@/generated/prisma/client";
+import type { Section, UserType, GiftCardStatus, PromotionType, DiscountUnit, LoyaltyTxType } from "@/generated/prisma/client";
 
 export async function getCompanyInfo() {
   const { organizationId } = await getCurrentUser();
@@ -1016,12 +1016,7 @@ export async function getPromotions(search?: string, page = 1) {
   const where = {
     organizationId,
     ...(search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { code: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
+      ? { name: { contains: search, mode: "insensitive" as const } }
       : {}),
   };
 
@@ -1029,7 +1024,11 @@ export async function getPromotions(search?: string, page = 1) {
     prisma.promotion.findMany({
       where,
       include: {
-        _count: { select: { includedProducts: true, includedServices: true, sales: true } },
+        _count: { select: { includedProducts: true, includedServices: true, sales: true, volumeTiers: true } },
+        triggerProduct: { select: { id: true, name: true } },
+        triggerService: { select: { id: true, name: true } },
+        rewardProduct: { select: { id: true, name: true } },
+        rewardService: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -1048,18 +1047,22 @@ export async function getPromotion(id: string) {
     where: { id, organizationId },
     include: {
       includedProducts: {
-        include: { product: { select: { name: true } } },
+        include: { product: { select: { id: true, name: true, price: true } } },
       },
       includedServices: {
-        include: { service: { select: { name: true } } },
+        include: { service: { select: { id: true, name: true, price: true } } },
       },
+      volumeTiers: { orderBy: { tierOrder: "asc" } },
+      triggerProduct: { select: { id: true, name: true, price: true } },
+      triggerService: { select: { id: true, name: true, price: true } },
+      rewardProduct: { select: { id: true, name: true, price: true } },
+      rewardService: { select: { id: true, name: true, price: true } },
     },
   });
 }
 
 export async function createPromotion(input: {
   name: string;
-  code?: string;
   type: PromotionType;
   value: number;
   minPurchase?: number;
@@ -1072,6 +1075,17 @@ export async function createPromotion(input: {
   appliesToAll: boolean;
   productIds?: string[];
   serviceIds?: string[];
+  // Buy X Get Y
+  triggerProductId?: string;
+  triggerServiceId?: string;
+  rewardProductId?: string;
+  rewardServiceId?: string;
+  rewardDiscount?: number;
+  rewardDiscountUnit?: DiscountUnit;
+  // Bundle
+  bundlePrice?: number;
+  // Volume tiers
+  volumeTiers?: { tierOrder: number; minQty: number; maxQty?: number; discount: number; discountUnit: DiscountUnit }[];
 }) {
   const { user, organizationId, slug } = await getCurrentUser();
 
@@ -1079,7 +1093,6 @@ export async function createPromotion(input: {
     data: {
       organizationId,
       name: input.name,
-      code: input.code || null,
       type: input.type,
       value: input.value,
       minPurchase: input.minPurchase ?? null,
@@ -1090,6 +1103,16 @@ export async function createPromotion(input: {
       endsAt: new Date(input.endsAt),
       isActive: input.isActive,
       appliesToAll: input.appliesToAll,
+      // Buy X Get Y fields
+      triggerProductId: input.triggerProductId ?? null,
+      triggerServiceId: input.triggerServiceId ?? null,
+      rewardProductId: input.rewardProductId ?? null,
+      rewardServiceId: input.rewardServiceId ?? null,
+      rewardDiscount: input.rewardDiscount ?? null,
+      rewardDiscountUnit: input.rewardDiscountUnit ?? null,
+      // Bundle price
+      bundlePrice: input.bundlePrice ?? null,
+      // Included items
       ...((!input.appliesToAll && input.productIds?.length)
         ? {
             includedProducts: {
@@ -1101,6 +1124,20 @@ export async function createPromotion(input: {
         ? {
             includedServices: {
               create: input.serviceIds.map((serviceId) => ({ serviceId })),
+            },
+          }
+        : {}),
+      // Volume tiers
+      ...(input.volumeTiers?.length
+        ? {
+            volumeTiers: {
+              create: input.volumeTiers.map((t) => ({
+                tierOrder: t.tierOrder,
+                minQty: t.minQty,
+                maxQty: t.maxQty ?? null,
+                discount: t.discount,
+                discountUnit: t.discountUnit,
+              })),
             },
           }
         : {}),
@@ -1124,7 +1161,6 @@ export async function updatePromotion(
   id: string,
   input: {
     name: string;
-    code?: string;
     type: PromotionType;
     value: number;
     minPurchase?: number;
@@ -1137,6 +1173,14 @@ export async function updatePromotion(
     appliesToAll: boolean;
     productIds?: string[];
     serviceIds?: string[];
+    triggerProductId?: string;
+    triggerServiceId?: string;
+    rewardProductId?: string;
+    rewardServiceId?: string;
+    rewardDiscount?: number;
+    rewardDiscountUnit?: DiscountUnit;
+    bundlePrice?: number;
+    volumeTiers?: { tierOrder: number; minQty: number; maxQty?: number; discount: number; discountUnit: DiscountUnit }[];
   },
 ) {
   const { user, organizationId, slug } = await getCurrentUser();
@@ -1146,14 +1190,15 @@ export async function updatePromotion(
   });
   if (!existing) throw new Error("Promotion not found");
 
-  await prisma.$transaction([
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ops: any[] = [
     prisma.promotionProduct.deleteMany({ where: { promotionId: id } }),
     prisma.promotionService.deleteMany({ where: { promotionId: id } }),
+    prisma.promotionVolumeTier.deleteMany({ where: { promotionId: id } }),
     prisma.promotion.update({
       where: { id },
       data: {
         name: input.name,
-        code: input.code || null,
         type: input.type,
         value: input.value,
         minPurchase: input.minPurchase ?? null,
@@ -1164,23 +1209,41 @@ export async function updatePromotion(
         endsAt: new Date(input.endsAt),
         isActive: input.isActive,
         appliesToAll: input.appliesToAll,
+        triggerProductId: input.triggerProductId ?? null,
+        triggerServiceId: input.triggerServiceId ?? null,
+        rewardProductId: input.rewardProductId ?? null,
+        rewardServiceId: input.rewardServiceId ?? null,
+        rewardDiscount: input.rewardDiscount ?? null,
+        rewardDiscountUnit: input.rewardDiscountUnit ?? null,
+        bundlePrice: input.bundlePrice ?? null,
       },
     }),
-    ...(!input.appliesToAll && input.productIds?.length
-      ? [
-          prisma.promotionProduct.createMany({
-            data: input.productIds.map((productId) => ({ promotionId: id, productId })),
-          }),
-        ]
-      : []),
-    ...(!input.appliesToAll && input.serviceIds?.length
-      ? [
-          prisma.promotionService.createMany({
-            data: input.serviceIds.map((serviceId) => ({ promotionId: id, serviceId })),
-          }),
-        ]
-      : []),
-  ]);
+  ];
+
+  if (!input.appliesToAll && input.productIds?.length) {
+    ops.push(prisma.promotionProduct.createMany({
+      data: input.productIds.map((productId) => ({ promotionId: id, productId })),
+    }));
+  }
+  if (!input.appliesToAll && input.serviceIds?.length) {
+    ops.push(prisma.promotionService.createMany({
+      data: input.serviceIds.map((serviceId) => ({ promotionId: id, serviceId })),
+    }));
+  }
+  if (input.volumeTiers?.length) {
+    ops.push(prisma.promotionVolumeTier.createMany({
+      data: input.volumeTiers.map((t) => ({
+        promotionId: id,
+        tierOrder: t.tierOrder,
+        minQty: t.minQty,
+        maxQty: t.maxQty ?? null,
+        discount: t.discount,
+        discountUnit: t.discountUnit,
+      })),
+    }));
+  }
+
+  await prisma.$transaction(ops);
 
   await createAuditLog({
     organizationId,

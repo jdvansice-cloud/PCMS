@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,11 +41,9 @@ import { formatCurrency } from "@/lib/utils";
 import {
   createSale,
   validateGiftCard,
-  validatePromoCode,
   getOwnerLoyaltyBalance,
-  getAutoPromotions,
 } from "./actions";
-import type { PaymentMethod, PromotionType } from "@/generated/prisma/client";
+import type { PaymentMethod, PromotionType, DiscountUnit } from "@/generated/prisma/client";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -84,14 +81,26 @@ type PosData = {
 type Promotion = {
   id: string;
   name: string;
-  code: string | null;
   type: PromotionType;
-  value: unknown; // Decimal
-  minPurchase: unknown; // Decimal | null
-  maxDiscount: unknown; // Decimal | null
+  value: unknown;
+  minPurchase: unknown;
+  maxDiscount: unknown;
+  usageLimit: number | null;
+  usageCount: number;
   appliesToAll: boolean;
   includedProducts: { productId: string }[];
   includedServices: { serviceId: string }[];
+  // Buy X Get Y
+  triggerProductId: string | null;
+  triggerServiceId: string | null;
+  rewardProductId: string | null;
+  rewardServiceId: string | null;
+  rewardDiscount: unknown;
+  rewardDiscountUnit: DiscountUnit | null;
+  // Bundle
+  bundlePrice: unknown;
+  // Volume tiers
+  volumeTiers: { minQty: number; maxQty: number | null; discount: unknown; discountUnit: DiscountUnit }[];
 };
 
 type LoyaltyConfig = {
@@ -113,10 +122,7 @@ type AppliedPromo = {
   id: string;
   name: string;
   type: PromotionType;
-  value: number;
-  maxDiscount: number | null;
   discountAmount: number;
-  isAuto: boolean;
 };
 
 interface PosTerminalProps {
@@ -139,22 +145,104 @@ function calcLineDiscount(item: CartItem): number {
   return Math.min(lineTotal, item.discountAmount);
 }
 
-function calcPromoDiscount(
-  type: PromotionType,
-  value: number,
-  maxDiscount: number | null,
-  applicableTotal: number,
-): number {
-  let d = 0;
-  if (type === "DISCOUNT_PERCENTAGE") {
-    d = (applicableTotal * value) / 100;
-    if (maxDiscount && d > maxDiscount) d = maxDiscount;
-  } else if (type === "DISCOUNT_FIXED") {
-    d = Math.min(value, applicableTotal);
-  } else if (type === "BUNDLE_PRICE") {
-    d = Math.max(0, applicableTotal - value);
+function evaluatePromotion(promo: Promotion, cart: CartItem[]): { applicable: boolean; discountAmount: number } {
+  if (cart.length === 0) return { applicable: false, discountAmount: 0 };
+
+  // Check usage limit
+  if (promo.usageLimit != null && promo.usageCount >= promo.usageLimit) {
+    return { applicable: false, discountAmount: 0 };
   }
-  return Math.max(0, d);
+
+  const value = Number(promo.value) || 0;
+  const maxDiscount = promo.maxDiscount ? Number(promo.maxDiscount) : null;
+
+  // Helper: get matching cart items
+  const matchingItems = promo.appliesToAll
+    ? cart
+    : cart.filter((item) => {
+        if (item.productId && promo.includedProducts.some((p) => p.productId === item.productId)) return true;
+        if (item.serviceId && promo.includedServices.some((s) => s.serviceId === item.serviceId)) return true;
+        return false;
+      });
+
+  if (promo.type === "DISCOUNT_PERCENTAGE" || promo.type === "DISCOUNT_FIXED") {
+    if (matchingItems.length === 0) return { applicable: false, discountAmount: 0 };
+    const matchingTotal = matchingItems.reduce((s, i) => s + i.unitPrice * i.quantity - calcLineDiscount(i), 0);
+    // Check min purchase
+    if (promo.minPurchase && matchingTotal < Number(promo.minPurchase)) return { applicable: false, discountAmount: 0 };
+    let d = 0;
+    if (promo.type === "DISCOUNT_PERCENTAGE") {
+      d = (matchingTotal * value) / 100;
+      if (maxDiscount && d > maxDiscount) d = maxDiscount;
+    } else {
+      d = Math.min(value, matchingTotal);
+    }
+    return { applicable: d > 0, discountAmount: Math.max(0, d) };
+  }
+
+  if (promo.type === "BUY_X_GET_Y") {
+    const triggerId = promo.triggerProductId || promo.triggerServiceId;
+    const rewardId = promo.rewardProductId || promo.rewardServiceId;
+    if (!triggerId || !rewardId) return { applicable: false, discountAmount: 0 };
+    const hasTrigger = cart.some((i) => i.productId === promo.triggerProductId || i.serviceId === promo.triggerServiceId);
+    const rewardItem = cart.find((i) => i.productId === promo.rewardProductId || i.serviceId === promo.rewardServiceId);
+    if (!hasTrigger || !rewardItem) return { applicable: false, discountAmount: 0 };
+    const rewardDisc = Number(promo.rewardDiscount) || 0;
+    const rewardPrice = rewardItem.unitPrice;
+    let d = 0;
+    if (promo.rewardDiscountUnit === "PERCENTAGE") {
+      d = (rewardPrice * rewardDisc) / 100;
+    } else {
+      d = Math.min(rewardDisc, rewardPrice);
+    }
+    return { applicable: d > 0, discountAmount: Math.max(0, d) };
+  }
+
+  if (promo.type === "BUNDLE_PRICE") {
+    const bundlePrice = Number(promo.bundlePrice) || 0;
+    // All included items must be in cart
+    const requiredProducts = promo.includedProducts.map((p) => p.productId);
+    const requiredServices = promo.includedServices.map((s) => s.serviceId);
+    const hasAllProducts = requiredProducts.every((pid) => cart.some((i) => i.productId === pid));
+    const hasAllServices = requiredServices.every((sid) => cart.some((i) => i.serviceId === sid));
+    if (!hasAllProducts || !hasAllServices) return { applicable: false, discountAmount: 0 };
+    if (requiredProducts.length + requiredServices.length < 2) return { applicable: false, discountAmount: 0 };
+    // Calculate total of bundle items at regular price
+    const bundleItems = cart.filter(
+      (i) => (i.productId && requiredProducts.includes(i.productId)) || (i.serviceId && requiredServices.includes(i.serviceId)),
+    );
+    const regularTotal = bundleItems.reduce((s, i) => s + i.unitPrice * 1, 0); // qty 1 each for bundle
+    const d = Math.max(0, regularTotal - bundlePrice);
+    return { applicable: d > 0, discountAmount: d };
+  }
+
+  if (promo.type === "VOLUME_DISCOUNT") {
+    if (matchingItems.length === 0 || promo.volumeTiers.length === 0) return { applicable: false, discountAmount: 0 };
+    let totalDisc = 0;
+    for (const item of matchingItems) {
+      const qty = item.quantity;
+      const tier = promo.volumeTiers.find((t) => qty >= t.minQty && (t.maxQty == null || qty <= t.maxQty));
+      if (tier) {
+        const lineTotal = item.unitPrice * qty;
+        const tierDiscount = Number(tier.discount) || 0;
+        if (tier.discountUnit === "PERCENTAGE") {
+          totalDisc += (lineTotal * tierDiscount) / 100;
+        } else {
+          totalDisc += Math.min(tierDiscount * qty, lineTotal);
+        }
+      }
+    }
+    return { applicable: totalDisc > 0, discountAmount: totalDisc };
+  }
+
+  if (promo.type === "FREE_DELIVERY") {
+    // Check if any matching grooming service is in cart
+    if (matchingItems.length === 0) return { applicable: false, discountAmount: 0 };
+    // Free delivery applies as a fixed value discount
+    return { applicable: value > 0, discountAmount: value };
+  }
+
+  return { applicable: false, discountAmount: 0 };
 }
 
 let paymentIdCounter = 0;
@@ -189,9 +277,7 @@ export function PosTerminal({
   const [lineDiscType, setLineDiscType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
   const [lineDiscValue, setLineDiscValue] = useState("");
 
-  // ── Promo Code State ──
-  const [promoCode, setPromoCode] = useState("");
-  const [promoError, setPromoError] = useState("");
+  // ── Auto-applied Promotions ──
   const [appliedPromos, setAppliedPromos] = useState<AppliedPromo[]>([]);
 
   // ── Gift Card State ──
@@ -373,51 +459,26 @@ export function PosTerminal({
     [loyaltyConfig.isEnabled],
   );
 
-  // ── Promo Code ──
-  async function handleApplyPromo() {
-    if (!promoCode.trim()) return;
-    setPromoError("");
-
-    // Check not already applied
-    if (appliedPromos.some((p) => p.id === promoCode)) {
-      setPromoError(t("promoUsed"));
+  // ── Auto-apply promotions when cart changes ──
+  useEffect(() => {
+    if (cart.length === 0) {
+      setAppliedPromos([]);
       return;
     }
-
-    try {
-      const result = await validatePromoCode(promoCode.trim(), afterLineDiscounts);
-      if (!result.valid) {
-        setPromoError(result.reason || t("promoInvalid"));
-        return;
-      }
-      const promo = result.promotion!;
-      const discount = calcPromoDiscount(
-        promo.type,
-        Number(promo.value),
-        promo.maxDiscount ? Number(promo.maxDiscount) : null,
-        afterLineDiscounts,
-      );
-      setAppliedPromos((prev) => [
-        ...prev,
-        {
+    const applied: AppliedPromo[] = [];
+    for (const promo of promotions) {
+      const result = evaluatePromotion(promo, cart);
+      if (result.applicable && result.discountAmount > 0) {
+        applied.push({
           id: promo.id,
           name: promo.name,
           type: promo.type,
-          value: Number(promo.value),
-          maxDiscount: promo.maxDiscount ? Number(promo.maxDiscount) : null,
-          discountAmount: discount,
-          isAuto: false,
-        },
-      ]);
-      setPromoCode("");
-    } catch {
-      setPromoError(t("promoInvalid"));
+          discountAmount: result.discountAmount,
+        });
+      }
     }
-  }
-
-  function removePromo(id: string) {
-    setAppliedPromos((prev) => prev.filter((p) => p.id !== id));
-  }
+    setAppliedPromos(applied);
+  }, [cart, promotions]);
 
   // ── Gift Card ──
   async function handleApplyGiftCard() {
@@ -522,7 +583,6 @@ export function PosTerminal({
       setLoyaltyRedeem("");
       setLoyaltyBalance(null);
       setGiftCardCode("");
-      setPromoCode("");
 
       router.push(`${base}/sales/${result.saleId}`);
     } finally {
@@ -773,55 +833,20 @@ export function PosTerminal({
               </div>
             )}
 
-            {/* ── Promo Code ── */}
-            {cart.length > 0 && (
+            {/* ── Auto-applied Promotions ── */}
+            {cart.length > 0 && appliedPromos.length > 0 && (
               <div className="space-y-2 border-t pt-3">
-                <div className="flex gap-1.5">
-                  <div className="relative flex-1">
-                    <Tag className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      className="pl-8 h-8 text-sm"
-                      placeholder={t("enterPromoCode")}
-                      value={promoCode}
-                      onChange={(e) => {
-                        setPromoCode(e.target.value.toUpperCase());
-                        setPromoError("");
-                      }}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleApplyPromo()
-                      }
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs"
-                    onClick={handleApplyPromo}
-                    disabled={!promoCode.trim()}
-                  >
-                    {t("applyCode")}
-                  </Button>
+                <div className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs font-medium">{t("promoApplied")}</span>
                 </div>
-                {promoError && (
-                  <p className="text-xs text-destructive">{promoError}</p>
-                )}
-                {appliedPromos.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {appliedPromos.map((p) => (
-                      <Badge
-                        key={p.id}
-                        variant="secondary"
-                        className="gap-1 text-xs"
-                      >
-                        {p.isAuto ? `${t("autoPromo")}: ` : ""}
-                        {p.name} -{formatCurrency(p.discountAmount)}
-                        <button onClick={() => removePromo(p.id)}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {appliedPromos.map((p) => (
+                    <Badge key={p.id} className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs gap-1">
+                      {p.name} -{formatCurrency(p.discountAmount)}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
 

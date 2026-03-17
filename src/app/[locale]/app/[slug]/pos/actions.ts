@@ -432,7 +432,7 @@ export async function getSale(id: string) {
       lines: true,
       payments: true,
       promotions: {
-        include: { promotion: { select: { name: true, code: true, type: true } } },
+        include: { promotion: { select: { name: true, type: true } } },
       },
       giftCardTxs: {
         include: { giftCard: { select: { code: true } } },
@@ -460,105 +460,29 @@ export async function getActivePromotions() {
     select: {
       id: true,
       name: true,
-      code: true,
       type: true,
       value: true,
       minPurchase: true,
       maxDiscount: true,
+      usageLimit: true,
+      usageCount: true,
       appliesToAll: true,
+      // Buy X Get Y
+      triggerProductId: true,
+      triggerServiceId: true,
+      rewardProductId: true,
+      rewardServiceId: true,
+      rewardDiscount: true,
+      rewardDiscountUnit: true,
+      // Bundle
+      bundlePrice: true,
+      // Items
       includedProducts: { select: { productId: true } },
       includedServices: { select: { serviceId: true } },
+      // Volume tiers
+      volumeTiers: { orderBy: { tierOrder: "asc" as const }, select: { minQty: true, maxQty: true, discount: true, discountUnit: true } },
     },
   });
-}
-
-export async function validatePromoCode(code: string, cartTotal: number) {
-  const { organizationId } = await getCurrentUser();
-  const now = new Date();
-
-  const promotion = await prisma.promotion.findUnique({
-    where: { organizationId_code: { organizationId, code } },
-    include: {
-      includedProducts: { select: { productId: true } },
-      includedServices: { select: { serviceId: true } },
-    },
-  });
-
-  if (!promotion) return { valid: false as const, reason: "Promotion not found" };
-  if (!promotion.isActive)
-    return { valid: false as const, reason: "Promotion is not active" };
-  if (now < promotion.startsAt)
-    return { valid: false as const, reason: "Promotion has not started yet" };
-  if (now > promotion.endsAt)
-    return { valid: false as const, reason: "Promotion has expired" };
-  if (
-    promotion.usageLimit != null &&
-    promotion.usageCount >= promotion.usageLimit
-  )
-    return { valid: false as const, reason: "Promotion usage limit reached" };
-  if (
-    promotion.minPurchase != null &&
-    cartTotal < Number(promotion.minPurchase)
-  )
-    return {
-      valid: false as const,
-      reason: `Minimum purchase of ${Number(promotion.minPurchase).toFixed(2)} required`,
-    };
-
-  return {
-    valid: true as const,
-    promotion: {
-      id: promotion.id,
-      name: promotion.name,
-      type: promotion.type,
-      value: promotion.value,
-      maxDiscount: promotion.maxDiscount,
-      appliesToAll: promotion.appliesToAll,
-      includedProducts: promotion.includedProducts,
-      includedServices: promotion.includedServices,
-    },
-  };
-}
-
-export async function getAutoPromotions(cartItemIds: {
-  productIds: string[];
-  serviceIds: string[];
-}) {
-  const { organizationId } = await getCurrentUser();
-  const now = new Date();
-
-  const promotions = await prisma.promotion.findMany({
-    where: {
-      organizationId,
-      isActive: true,
-      code: null,
-      startsAt: { lte: now },
-      endsAt: { gte: now },
-    },
-    include: {
-      includedProducts: { select: { productId: true } },
-      includedServices: { select: { serviceId: true } },
-    },
-  });
-
-  return promotions
-    .filter((promo) => {
-      if (promo.appliesToAll) return true;
-      const hasProduct = promo.includedProducts.some((pp) =>
-        cartItemIds.productIds.includes(pp.productId),
-      );
-      const hasService = promo.includedServices.some((ps) =>
-        cartItemIds.serviceIds.includes(ps.serviceId),
-      );
-      return hasProduct || hasService;
-    })
-    .map((promo) => ({
-      id: promo.id,
-      name: promo.name,
-      type: promo.type,
-      value: promo.value,
-      maxDiscount: promo.maxDiscount,
-    }));
 }
 
 // ═══════════════════════════════════════════════════════════

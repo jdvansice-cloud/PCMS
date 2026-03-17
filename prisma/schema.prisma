@@ -160,8 +160,14 @@ enum PromotionType {
   DISCOUNT_PERCENTAGE
   DISCOUNT_FIXED
   BUY_X_GET_Y
-  FREE_ITEM
   BUNDLE_PRICE
+  FREE_DELIVERY
+  VOLUME_DISCOUNT
+}
+
+enum DiscountUnit {
+  PERCENTAGE
+  FIXED
 }
 
 enum GiftCardStatus {
@@ -544,10 +550,12 @@ model Service {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  saleLines    SaleLine[]
-  appointments Appointment[]
-  promotions   PromotionService[]
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  saleLines      SaleLine[]
+  appointments   Appointment[]
+  promotions     PromotionService[]
+  promoTriggers  Promotion[]        @relation("PromoTriggerSvc")
+  promoRewards   Promotion[]        @relation("PromoRewardSvc")
 
   @@index([organizationId])
   @@map("services")
@@ -578,12 +586,14 @@ model Product {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  branch       Branch?      @relation(fields: [branchId], references: [id])
-  supplier     Supplier?    @relation(fields: [supplierId], references: [id])
-  saleLines    SaleLine[]
-  poLines      PurchaseOrderLine[]
-  promotions   PromotionProduct[]
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch        Branch?             @relation(fields: [branchId], references: [id])
+  supplier      Supplier?           @relation(fields: [supplierId], references: [id])
+  saleLines     SaleLine[]
+  poLines       PurchaseOrderLine[]
+  promotions    PromotionProduct[]
+  promoTriggers Promotion[]         @relation("PromoTrigger")
+  promoRewards  Promotion[]         @relation("PromoReward")
 
   @@index([organizationId])
   @@map("products")
@@ -984,9 +994,10 @@ model SaleLine {
   itbms          Decimal       @db.Decimal(10, 2)
   lineTotal      Decimal       @db.Decimal(10, 2) @map("line_total")
 
-  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id])
-  service Service? @relation(fields: [serviceId], references: [id])
+  sale       Sale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product    Product?        @relation(fields: [productId], references: [id])
+  service    Service?        @relation(fields: [serviceId], references: [id])
+  promoLinks SalePromotion[]
 
   @@map("sale_lines")
 }
@@ -1071,7 +1082,6 @@ model Promotion {
   id               String        @id @default(cuid())
   organizationId   String        @map("organization_id")
   name             String
-  code             String?
   type             PromotionType
   value            Decimal       @db.Decimal(10, 2)
   minPurchase      Decimal?      @db.Decimal(10, 2) @map("min_purchase")
@@ -1086,12 +1096,27 @@ model Promotion {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Buy X Get Y fields
+  triggerProductId   String?       @map("trigger_product_id")
+  triggerServiceId   String?       @map("trigger_service_id")
+  rewardProductId    String?       @map("reward_product_id")
+  rewardServiceId    String?       @map("reward_service_id")
+  rewardDiscount     Decimal?      @db.Decimal(10, 2) @map("reward_discount")
+  rewardDiscountUnit DiscountUnit? @map("reward_discount_unit")
+
+  // Bundle fields
+  bundlePrice Decimal? @db.Decimal(10, 2) @map("bundle_price")
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  triggerProduct   Product?              @relation("PromoTrigger", fields: [triggerProductId], references: [id])
+  triggerService   Service?              @relation("PromoTriggerSvc", fields: [triggerServiceId], references: [id])
+  rewardProduct    Product?              @relation("PromoReward", fields: [rewardProductId], references: [id])
+  rewardService    Service?              @relation("PromoRewardSvc", fields: [rewardServiceId], references: [id])
   includedProducts PromotionProduct[]
   includedServices PromotionService[]
+  volumeTiers      PromotionVolumeTier[]
   sales            SalePromotion[]
 
-  @@unique([organizationId, code])
   @@index([organizationId, isActive, startsAt, endsAt])
   @@map("promotions")
 }
@@ -1118,14 +1143,31 @@ model PromotionService {
   @@map("promotion_services")
 }
 
+model PromotionVolumeTier {
+  id           String       @id @default(cuid())
+  promotionId  String       @map("promotion_id")
+  tierOrder    Int          @map("tier_order")
+  minQty       Int          @map("min_qty")
+  maxQty       Int?         @map("max_qty")
+  discount     Decimal      @db.Decimal(10, 2)
+  discountUnit DiscountUnit @map("discount_unit")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, tierOrder])
+  @@map("promotion_volume_tiers")
+}
+
 model SalePromotion {
   id             String  @id @default(cuid())
   saleId         String  @map("sale_id")
   promotionId    String  @map("promotion_id")
+  saleLineId     String? @map("sale_line_id")
   discountAmount Decimal @db.Decimal(10, 2) @map("discount_amount")
 
   sale      Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
   promotion Promotion @relation(fields: [promotionId], references: [id])
+  saleLine  SaleLine? @relation(fields: [saleLineId], references: [id])
 
   @@map("sale_promotions")
 }

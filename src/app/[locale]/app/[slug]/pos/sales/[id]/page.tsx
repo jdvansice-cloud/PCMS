@@ -183,9 +183,6 @@ export default async function SaleDetailPage({
                   <div key={sp.id} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       {sp.promotion.name}
-                      {sp.promotion.code && (
-                        <span className="font-mono text-xs ml-1">({sp.promotion.code})</span>
-                      )}
                     </span>
                     <span className="text-green-600">
                       -{formatCurrency(Number(sp.discountAmount))}
