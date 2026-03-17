@@ -38,6 +38,7 @@ export const DEFAULT_ROLES: DefaultRole[] = [
       { section: "SETTINGS", ...NONE },
       { section: "USERS", ...NONE },
       { section: "AUDIT_LOG", ...NONE },
+      { section: "PROMOTIONS", ...NONE },
     ],
   },
   {
@@ -57,6 +58,7 @@ export const DEFAULT_ROLES: DefaultRole[] = [
       { section: "SETTINGS", ...NONE },
       { section: "USERS", ...NONE },
       { section: "AUDIT_LOG", ...NONE },
+      { section: "PROMOTIONS", ...V },
     ],
   },
   {
@@ -76,6 +78,7 @@ export const DEFAULT_ROLES: DefaultRole[] = [
       { section: "SETTINGS", ...NONE },
       { section: "USERS", ...NONE },
       { section: "AUDIT_LOG", ...NONE },
+      { section: "PROMOTIONS", ...NONE },
     ],
   },
   {
@@ -95,6 +98,7 @@ export const DEFAULT_ROLES: DefaultRole[] = [
       { section: "SETTINGS", ...NONE },
       { section: "USERS", ...NONE },
       { section: "AUDIT_LOG", ...NONE },
+      { section: "PROMOTIONS", ...VC },
     ],
   },
 ];

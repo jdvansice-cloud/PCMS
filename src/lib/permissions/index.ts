@@ -28,6 +28,7 @@ const ALL_SECTIONS: Section[] = [
   "SETTINGS",
   "USERS",
   "AUDIT_LOG",
+  "PROMOTIONS",
 ];
 
 function fullAccess(): PermissionMap {

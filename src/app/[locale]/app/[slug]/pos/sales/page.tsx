@@ -11,6 +11,21 @@ import { Pagination } from "@/components/pagination";
 import { formatCurrency } from "@/lib/utils";
 import { getSales } from "../actions";
 
+function paymentLabels(
+  payments: { paymentMethod: string; amount: unknown }[],
+): string {
+  const methods = [...new Set(payments.map((p) => p.paymentMethod))];
+  const labels: Record<string, string> = {
+    CASH: "Efectivo",
+    CARD: "Tarjeta",
+    YAPPY: "Yappy",
+    BANK_TRANSFER: "Transfer.",
+    GIFT_CARD: "Gift Card",
+    LOYALTY: "Lealtad",
+  };
+  return methods.map((m) => labels[m] || m).join(", ");
+}
+
 export default async function SalesPage({
   params,
   searchParams,
@@ -63,8 +78,18 @@ export default async function SalesPage({
                         <p className="text-xs text-muted-foreground">
                           {s.owner ? `${s.owner.firstName} ${s.owner.lastName}` : t("noClient")}
                         </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {paymentLabels(s.payments)}
+                        </p>
                       </div>
-                      <span className="text-sm font-semibold">{formatCurrency(Number(s.total))}</span>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold">{formatCurrency(Number(s.total))}</span>
+                        {Number(s.discountAmount) > 0 && (
+                          <p className="text-xs text-green-600">
+                            -{formatCurrency(Number(s.discountAmount))}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -79,6 +104,8 @@ export default async function SalesPage({
                   <TableHead>#</TableHead>
                   <TableHead>{t("client")}</TableHead>
                   <TableHead>{t("items")}</TableHead>
+                  <TableHead>{t("method")}</TableHead>
+                  <TableHead>{t("discount")}</TableHead>
                   <TableHead>{tc("total")}</TableHead>
                   <TableHead>{tc("status")}</TableHead>
                   <TableHead className="hidden md:table-cell">{tc("date")}</TableHead>
@@ -96,6 +123,18 @@ export default async function SalesPage({
                       {s.owner ? `${s.owner.firstName} ${s.owner.lastName}` : "—"}
                     </TableCell>
                     <TableCell>{s._count.lines}</TableCell>
+                    <TableCell className="text-xs">
+                      {paymentLabels(s.payments)}
+                    </TableCell>
+                    <TableCell>
+                      {Number(s.discountAmount) > 0 ? (
+                        <span className="text-green-600 text-xs">
+                          -{formatCurrency(Number(s.discountAmount))}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="font-semibold">{formatCurrency(Number(s.total))}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">{s.status}</Badge>

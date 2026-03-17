@@ -6,7 +6,7 @@ import { createAuditLog, diffChanges } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { ALL_SECTIONS } from "@/lib/permissions";
-import type { Section, UserType } from "@/generated/prisma/client";
+import type { Section, UserType, GiftCardStatus, PromotionType, LoyaltyTxType } from "@/generated/prisma/client";
 
 export async function getCompanyInfo() {
   const { organizationId } = await getCurrentUser();
@@ -728,5 +728,496 @@ export async function updateBranchAssignments(
 
   revalidatePath(`/app/${slug}/settings/branches`);
   revalidatePath(`/app/${slug}/settings/users`);
+  return { success: true };
+}
+
+// ─── Loyalty Program ─────────────────────────────────────────────────────────
+
+export async function getLoyaltyConfig() {
+  const { organizationId } = await getCurrentUser();
+  const config = await prisma.loyaltyConfig.findUnique({
+    where: { organizationId },
+  });
+  if (!config) {
+    return {
+      isEnabled: false,
+      dollarRate: 0.05,
+      expirationDays: 365,
+      minRedemption: 1.0,
+    };
+  }
+  return {
+    isEnabled: config.isEnabled,
+    dollarRate: Number(config.dollarRate),
+    expirationDays: config.expirationDays ?? 0,
+    minRedemption: Number(config.minRedemption),
+  };
+}
+
+export async function updateLoyaltyConfig(input: {
+  isEnabled: boolean;
+  dollarRate: number;
+  expirationDays: number;
+  minRedemption: number;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  await prisma.loyaltyConfig.upsert({
+    where: { organizationId },
+    update: {
+      isEnabled: input.isEnabled,
+      dollarRate: input.dollarRate,
+      expirationDays: input.expirationDays || null,
+      minRedemption: input.minRedemption,
+    },
+    create: {
+      organizationId,
+      isEnabled: input.isEnabled,
+      dollarRate: input.dollarRate,
+      expirationDays: input.expirationDays || null,
+      minRedemption: input.minRedemption,
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "LoyaltyConfig",
+    entityId: organizationId,
+    metadata: input,
+  });
+
+  revalidatePath(`/app/${slug}/settings/loyalty`);
+  return { success: true };
+}
+
+export async function getTopLoyaltyHolders() {
+  const { organizationId } = await getCurrentUser();
+
+  const holders = await prisma.loyaltyLedger.groupBy({
+    by: ["ownerId"],
+    where: { organizationId },
+    _max: { createdAt: true },
+    _sum: { amount: true },
+    orderBy: { _sum: { amount: "desc" } },
+    take: 20,
+  });
+
+  if (holders.length === 0) return [];
+
+  const ownerIds = holders.map((h) => h.ownerId);
+  const owners = await prisma.owner.findMany({
+    where: { id: { in: ownerIds } },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  const ownerMap = new Map(owners.map((o) => [o.id, o]));
+
+  // Get the latest ledger entry per owner for the actual balance
+  const latestEntries = await prisma.loyaltyLedger.findMany({
+    where: { organizationId, ownerId: { in: ownerIds } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["ownerId"],
+    select: { ownerId: true, balanceAfter: true, createdAt: true },
+  });
+  const balanceMap = new Map(
+    latestEntries.map((e) => [e.ownerId, { balance: Number(e.balanceAfter), lastActivity: e.createdAt }]),
+  );
+
+  return holders
+    .map((h) => {
+      const owner = ownerMap.get(h.ownerId);
+      const info = balanceMap.get(h.ownerId);
+      if (!owner || !info || info.balance <= 0) return null;
+      return {
+        ownerId: h.ownerId,
+        firstName: owner.firstName,
+        lastName: owner.lastName,
+        balance: info.balance,
+        lastActivity: info.lastActivity,
+      };
+    })
+    .filter(Boolean) as {
+      ownerId: string;
+      firstName: string;
+      lastName: string;
+      balance: number;
+      lastActivity: Date;
+    }[];
+}
+
+// ─── Gift Cards ──────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20;
+
+function generateGiftCardCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I,O,0,1 for readability
+  const segment = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `GC-${segment()}-${segment()}`;
+}
+
+export async function getGiftCards(search?: string, page = 1) {
+  const { organizationId } = await getCurrentUser();
+
+  const where = {
+    organizationId,
+    ...(search
+      ? {
+          OR: [
+            { code: { contains: search, mode: "insensitive" as const } },
+            { purchasedBy: { firstName: { contains: search, mode: "insensitive" as const } } },
+            { purchasedBy: { lastName: { contains: search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.giftCard.findMany({
+      where,
+      include: {
+        purchasedBy: { select: { firstName: true, lastName: true } },
+        _count: { select: { transactions: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.giftCard.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize: PAGE_SIZE, totalPages: Math.ceil(total / PAGE_SIZE) };
+}
+
+export async function getGiftCard(id: string) {
+  const { organizationId } = await getCurrentUser();
+
+  return prisma.giftCard.findFirst({
+    where: { id, organizationId },
+    include: {
+      purchasedBy: { select: { firstName: true, lastName: true } },
+      transactions: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          createdBy: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function createGiftCard(input: {
+  initialBalance: number;
+  expirationDays?: number;
+  purchasedById?: string;
+  notes?: string;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const code = generateGiftCardCode();
+  const expiresAt =
+    input.expirationDays && input.expirationDays > 0
+      ? new Date(Date.now() + input.expirationDays * 86400000)
+      : null;
+
+  const giftCard = await prisma.giftCard.create({
+    data: {
+      organizationId,
+      code,
+      initialBalance: input.initialBalance,
+      balance: input.initialBalance,
+      expiresAt,
+      purchasedById: input.purchasedById || null,
+      notes: input.notes || null,
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "GiftCard",
+    entityId: giftCard.id,
+    metadata: { code, initialBalance: input.initialBalance },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true, giftCard };
+}
+
+export async function bulkCreateGiftCards(input: {
+  quantity: number;
+  initialBalance: number;
+  expirationDays?: number;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const expiresAt =
+    input.expirationDays && input.expirationDays > 0
+      ? new Date(Date.now() + input.expirationDays * 86400000)
+      : null;
+
+  const cards = Array.from({ length: input.quantity }, () => ({
+    organizationId,
+    code: generateGiftCardCode(),
+    initialBalance: input.initialBalance,
+    balance: input.initialBalance,
+    expiresAt,
+  }));
+
+  const result = await prisma.$transaction(
+    cards.map((card) => prisma.giftCard.create({ data: card })),
+  );
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "GiftCard",
+    entityId: "bulk",
+    metadata: { quantity: input.quantity, initialBalance: input.initialBalance },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true, count: result.length };
+}
+
+export async function cancelGiftCard(id: string) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const giftCard = await prisma.giftCard.findFirst({
+    where: { id, organizationId },
+  });
+  if (!giftCard) throw new Error("Gift card not found");
+
+  await prisma.giftCard.update({
+    where: { id },
+    data: { status: "CANCELLED" },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "GiftCard",
+    entityId: id,
+    metadata: { code: giftCard.code, previousStatus: giftCard.status, newStatus: "CANCELLED" },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
+
+// ─── Promotions ──────────────────────────────────────────────────────────────
+
+export async function getPromotions(search?: string, page = 1) {
+  const { organizationId } = await getCurrentUser();
+
+  const where = {
+    organizationId,
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { code: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.promotion.findMany({
+      where,
+      include: {
+        _count: { select: { includedProducts: true, includedServices: true, sales: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.promotion.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize: PAGE_SIZE, totalPages: Math.ceil(total / PAGE_SIZE) };
+}
+
+export async function getPromotion(id: string) {
+  const { organizationId } = await getCurrentUser();
+
+  return prisma.promotion.findFirst({
+    where: { id, organizationId },
+    include: {
+      includedProducts: {
+        include: { product: { select: { name: true } } },
+      },
+      includedServices: {
+        include: { service: { select: { name: true } } },
+      },
+    },
+  });
+}
+
+export async function createPromotion(input: {
+  name: string;
+  code?: string;
+  type: PromotionType;
+  value: number;
+  minPurchase?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  perCustomerLimit?: number;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  appliesToAll: boolean;
+  productIds?: string[];
+  serviceIds?: string[];
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const promotion = await prisma.promotion.create({
+    data: {
+      organizationId,
+      name: input.name,
+      code: input.code || null,
+      type: input.type,
+      value: input.value,
+      minPurchase: input.minPurchase ?? null,
+      maxDiscount: input.maxDiscount ?? null,
+      usageLimit: input.usageLimit ?? null,
+      perCustomerLimit: input.perCustomerLimit ?? null,
+      startsAt: new Date(input.startsAt),
+      endsAt: new Date(input.endsAt),
+      isActive: input.isActive,
+      appliesToAll: input.appliesToAll,
+      ...((!input.appliesToAll && input.productIds?.length)
+        ? {
+            includedProducts: {
+              create: input.productIds.map((productId) => ({ productId })),
+            },
+          }
+        : {}),
+      ...((!input.appliesToAll && input.serviceIds?.length)
+        ? {
+            includedServices: {
+              create: input.serviceIds.map((serviceId) => ({ serviceId })),
+            },
+          }
+        : {}),
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "Promotion",
+    entityId: promotion.id,
+    metadata: { name: input.name, type: input.type },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true, promotion };
+}
+
+export async function updatePromotion(
+  id: string,
+  input: {
+    name: string;
+    code?: string;
+    type: PromotionType;
+    value: number;
+    minPurchase?: number;
+    maxDiscount?: number;
+    usageLimit?: number;
+    perCustomerLimit?: number;
+    startsAt: string;
+    endsAt: string;
+    isActive: boolean;
+    appliesToAll: boolean;
+    productIds?: string[];
+    serviceIds?: string[];
+  },
+) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const existing = await prisma.promotion.findFirst({
+    where: { id, organizationId },
+  });
+  if (!existing) throw new Error("Promotion not found");
+
+  await prisma.$transaction([
+    prisma.promotionProduct.deleteMany({ where: { promotionId: id } }),
+    prisma.promotionService.deleteMany({ where: { promotionId: id } }),
+    prisma.promotion.update({
+      where: { id },
+      data: {
+        name: input.name,
+        code: input.code || null,
+        type: input.type,
+        value: input.value,
+        minPurchase: input.minPurchase ?? null,
+        maxDiscount: input.maxDiscount ?? null,
+        usageLimit: input.usageLimit ?? null,
+        perCustomerLimit: input.perCustomerLimit ?? null,
+        startsAt: new Date(input.startsAt),
+        endsAt: new Date(input.endsAt),
+        isActive: input.isActive,
+        appliesToAll: input.appliesToAll,
+      },
+    }),
+    ...(!input.appliesToAll && input.productIds?.length
+      ? [
+          prisma.promotionProduct.createMany({
+            data: input.productIds.map((productId) => ({ promotionId: id, productId })),
+          }),
+        ]
+      : []),
+    ...(!input.appliesToAll && input.serviceIds?.length
+      ? [
+          prisma.promotionService.createMany({
+            data: input.serviceIds.map((serviceId) => ({ promotionId: id, serviceId })),
+          }),
+        ]
+      : []),
+  ]);
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Promotion",
+    entityId: id,
+    metadata: { name: input.name },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
+
+export async function togglePromotion(id: string) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const promotion = await prisma.promotion.findFirst({
+    where: { id, organizationId },
+  });
+  if (!promotion) throw new Error("Promotion not found");
+
+  const newState = !promotion.isActive;
+  await prisma.promotion.update({
+    where: { id },
+    data: { isActive: newState },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Promotion",
+    entityId: id,
+    metadata: { name: promotion.name, isActive: newState },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
   return { success: true };
 }
