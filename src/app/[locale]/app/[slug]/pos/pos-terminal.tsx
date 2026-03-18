@@ -37,7 +37,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PageHeader } from "@/components/page-header";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getItbmsBreakdown } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -415,18 +415,46 @@ export function PosTerminal({
     );
   }
 
-  // ── Calculations ──
-  const cartSubtotal = useMemo(
-    () => cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
+  // ── Per-line ITBMS calculations ──
+  type LineCalc = {
+    key: string;
+    grossTotal: number;
+    discount: number;
+    afterDiscount: number;
+    subtotalNoTax: number;
+    itbms: number;
+  };
+
+  const lineCalcs: LineCalc[] = useMemo(
+    () =>
+      cart.map((item) => {
+        const grossTotal = item.unitPrice * item.quantity;
+        const discount = calcLineDiscount(item);
+        const afterDiscount = grossTotal - discount;
+        const breakdown = getItbmsBreakdown(afterDiscount, item.isTaxExempt);
+        return {
+          key: item.key,
+          grossTotal,
+          discount,
+          afterDiscount,
+          subtotalNoTax: breakdown.subtotal,
+          itbms: breakdown.itbms,
+        };
+      }),
     [cart],
   );
 
+  // ── Aggregate Calculations ──
+  const cartGrossTotal = useMemo(
+    () => lineCalcs.reduce((s, l) => s + l.grossTotal, 0),
+    [lineCalcs],
+  );
   const totalLineDiscounts = useMemo(
-    () => cart.reduce((sum, i) => sum + calcLineDiscount(i), 0),
-    [cart],
+    () => lineCalcs.reduce((s, l) => s + l.discount, 0),
+    [lineCalcs],
   );
 
-  const afterLineDiscounts = cartSubtotal - totalLineDiscounts;
+  const afterLineDiscounts = cartGrossTotal - totalLineDiscounts;
 
   // Promo discounts
   const totalPromoDiscount = useMemo(
@@ -446,8 +474,28 @@ export function PosTerminal({
     return Math.min(afterPromos, val);
   }, [txDiscountType, txDiscountValue, afterPromos]);
 
-  const afterAllDiscounts = afterPromos - txDiscount;
   const totalDiscount = totalLineDiscounts + totalPromoDiscount + txDiscount;
+  const afterAllDiscounts = afterPromos - txDiscount;
+
+  // ITBMS: calculated on the final amount after all discounts, per-line proportionally
+  const ticketSubtotalNoTax = useMemo(() => {
+    // Sum of per-line subtotals (pre-tax) after line discounts
+    const lineSubTotal = lineCalcs.reduce((s, l) => s + l.subtotalNoTax, 0);
+    // Adjust for promo + tx discounts (proportional reduction of pre-tax)
+    const promoAndTxDiscount = totalPromoDiscount + txDiscount;
+    if (promoAndTxDiscount <= 0) return lineSubTotal;
+    // The promo/tx discounts apply to the ITBMS-inclusive total, so back-calculate
+    const promoTxBreakdown = getItbmsBreakdown(promoAndTxDiscount, false);
+    return Math.max(0, lineSubTotal - promoTxBreakdown.subtotal);
+  }, [lineCalcs, totalPromoDiscount, txDiscount]);
+
+  const ticketItbms = useMemo(() => {
+    const lineItbms = lineCalcs.reduce((s, l) => s + l.itbms, 0);
+    const promoAndTxDiscount = totalPromoDiscount + txDiscount;
+    if (promoAndTxDiscount <= 0) return lineItbms;
+    const promoTxBreakdown = getItbmsBreakdown(promoAndTxDiscount, false);
+    return Math.max(0, lineItbms - promoTxBreakdown.itbms);
+  }, [lineCalcs, totalPromoDiscount, txDiscount]);
 
   // Loyalty redemption
   const loyaltyRedeemAmount = useMemo(() => {
@@ -464,6 +512,52 @@ export function PosTerminal({
     [payments, loyaltyRedeemAmount],
   );
   const remainingToPay = Math.max(0, finalTotal - totalPaid);
+
+  // ── Cash Calculator State ──
+  const [showCashCalc, setShowCashCalc] = useState(false);
+  const [cashDenominations, setCashDenominations] = useState<Record<number, number>>({});
+  const cashDenominationValues = [100, 50, 20, 10, 5, 1, 0.25];
+  const cashTotal = useMemo(
+    () => Object.entries(cashDenominations).reduce((s, [d, count]) => s + parseFloat(d) * count, 0),
+    [cashDenominations],
+  );
+  const cashChange = useMemo(
+    () => Math.max(0, cashTotal - (remainingToPay > 0 ? remainingToPay : finalTotal - loyaltyRedeemAmount)),
+    [cashTotal, remainingToPay, finalTotal, loyaltyRedeemAmount],
+  );
+
+  function addDenomination(d: number) {
+    setCashDenominations((prev) => ({ ...prev, [d]: (prev[d] || 0) + 1 }));
+  }
+  function clearDenominations() {
+    setCashDenominations({});
+  }
+  function confirmCashPayment() {
+    const amountToPay = remainingToPay > 0 ? remainingToPay : finalTotal - loyaltyRedeemAmount;
+    const payAmount = Math.min(cashTotal, amountToPay);
+    if (payAmount <= 0) return;
+    // If there are no payments yet, set as single; otherwise add
+    if (payments.length === 0) {
+      setPayments([{
+        id: `pay-${++paymentIdCounter}`,
+        method: "CASH",
+        amount: payAmount,
+      }]);
+    } else {
+      setPayments((prev) => [...prev, {
+        id: `pay-${++paymentIdCounter}`,
+        method: "CASH",
+        amount: payAmount,
+      }]);
+    }
+    setShowCashCalc(false);
+    setCashDenominations({});
+  }
+
+  // ── Change Due Modal State ──
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [changeAmount, setChangeAmount] = useState(0);
+  const [completedSaleNumber, setCompletedSaleNumber] = useState<number | null>(null);
 
   // ── Owner change → load loyalty ──
   const handleOwnerChange = useCallback(
@@ -565,6 +659,12 @@ export function PosTerminal({
   }
 
   function handleQuickPay(method: PaymentMethod) {
+    if (method === "CASH") {
+      // Open cash calculator
+      setCashDenominations({});
+      setShowCashCalc(true);
+      return;
+    }
     // Clear existing payments and pay full amount with one method
     setPayments([
       {
@@ -587,6 +687,11 @@ export function PosTerminal({
           giftCardId: p.giftCardId,
         }));
 
+      // Calculate if cash payment has change due
+      const cashPayment = payments.find((p) => p.method === "CASH");
+      const overpaid = totalPaid - finalTotal;
+      const hasCashChange = cashPayment && overpaid > 0.005;
+
       const result = await createSale({
         ownerId: ownerId || undefined,
         items: cart.map(({ key, ...rest }) => rest),
@@ -601,20 +706,39 @@ export function PosTerminal({
         discountedById: totalDiscount > 0 ? userId : undefined,
       });
 
-      // Reset
+      if (hasCashChange) {
+        // Show change modal
+        setChangeAmount(Math.round(overpaid * 100) / 100);
+        setCompletedSaleNumber(result.saleNumber);
+        setShowChangeModal(true);
+      }
+
+      // Reset POS to new sale
       setCart([]);
       setOwnerId("");
       setPayments([]);
       setAppliedPromos([]);
       setTxDiscountValue("");
+      setShowTxDiscount(false);
       setLoyaltyRedeem("");
       setLoyaltyBalance(null);
       setGiftCardCode("");
+      setSearch("");
 
-      router.push(`${base}/sales/${result.saleId}`);
+      if (!hasCashChange) {
+        // No change due — just reset (stay on POS for new sale)
+        router.refresh();
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function closeChangeModal() {
+    setShowChangeModal(false);
+    setChangeAmount(0);
+    setCompletedSaleNumber(null);
+    router.refresh();
   }
 
   // ── Gift Card Sell ──
@@ -778,8 +902,11 @@ export function PosTerminal({
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {cart.map((item) => {
-                  const lineTotal = item.unitPrice * item.quantity;
-                  const lineDisc = calcLineDiscount(item);
+                  const lc = lineCalcs.find((l) => l.key === item.key);
+                  const lineTotal = lc?.grossTotal ?? item.unitPrice * item.quantity;
+                  const lineDisc = lc?.discount ?? 0;
+                  const lineItbms = lc?.itbms ?? 0;
+                  const lineAfterDisc = lc?.afterDiscount ?? lineTotal;
                   return (
                     <div
                       key={item.key}
@@ -793,6 +920,23 @@ export function PosTerminal({
                           <p className="text-xs text-muted-foreground">
                             {formatCurrency(item.unitPrice)} x {item.quantity}
                           </p>
+                          {/* Per-line discount & ITBMS info */}
+                          <div className="flex flex-wrap gap-x-2 mt-0.5">
+                            {lineDisc > 0 && (
+                              <span className="text-[10px] text-green-600">
+                                -{formatCurrency(lineDisc)} {t("discount")}
+                              </span>
+                            )}
+                            {lineItbms > 0 ? (
+                              <span className="text-[10px] text-muted-foreground">
+                                {t("itbms")}: {formatCurrency(lineItbms)}
+                              </span>
+                            ) : item.isTaxExempt ? (
+                              <span className="text-[10px] text-orange-500">
+                                {t("exempt")}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
@@ -824,7 +968,7 @@ export function PosTerminal({
                                 {formatCurrency(lineTotal)}
                               </span>
                               <br />
-                              {formatCurrency(lineTotal - lineDisc)}
+                              {formatCurrency(lineAfterDisc)}
                             </>
                           ) : (
                             formatCurrency(lineTotal)
@@ -1010,8 +1154,8 @@ export function PosTerminal({
             {cart.length > 0 && (
               <div className="border-t pt-3 space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(cartSubtotal)}</span>
+                  <span>{tc("subtotal")}</span>
+                  <span>{formatCurrency(ticketSubtotalNoTax)}</span>
                 </div>
                 {totalDiscount > 0 && (
                   <div className="flex justify-between text-green-600">
@@ -1019,8 +1163,12 @@ export function PosTerminal({
                     <span>-{formatCurrency(totalDiscount)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{t("itbms")} (7%)</span>
+                  <span>{formatCurrency(ticketItbms)}</span>
+                </div>
                 <div className="flex justify-between font-bold text-base pt-1 border-t">
-                  <span>Total</span>
+                  <span>{tc("total")}</span>
                   <span>{formatCurrency(finalTotal)}</span>
                 </div>
               </div>
@@ -1231,6 +1379,16 @@ export function PosTerminal({
                     </div>
                   )}
 
+                  {/* Remaining balance */}
+                  {payments.length > 0 && (
+                    <div className="flex items-center justify-between text-xs py-1 px-2 rounded bg-muted/50">
+                      <span className="font-medium">{t("remainingBalance")}</span>
+                      <span className={`font-bold ${remainingToPay > 0.01 ? "text-destructive" : "text-green-600"}`}>
+                        {formatCurrency(remainingToPay)}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Add split payment */}
                   {remainingToPay > 0.01 && payments.length > 0 && (
                     <div className="flex gap-1.5 items-center">
@@ -1256,7 +1414,7 @@ export function PosTerminal({
                         type="number"
                         min="0.01"
                         step="0.01"
-                        className="h-7 text-xs w-20"
+                        className="h-7 text-xs w-24"
                         placeholder={formatCurrency(remainingToPay)}
                         value={newPayAmount}
                         onChange={(e) => setNewPayAmount(e.target.value)}
@@ -1265,17 +1423,18 @@ export function PosTerminal({
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs"
-                        onClick={addPayment}
+                        onClick={() => {
+                          if (newPayMethod === "CASH") {
+                            setCashDenominations({});
+                            setShowCashCalc(true);
+                          } else {
+                            addPayment();
+                          }
+                        }}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                  )}
-
-                  {remainingToPay > 0.01 && payments.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("remainingBalance")}: {formatCurrency(remainingToPay)}
-                    </p>
                   )}
                 </div>
 
@@ -1300,6 +1459,104 @@ export function PosTerminal({
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Cash Denomination Calculator ── */}
+      <Dialog open={showCashCalc} onOpenChange={(open) => { if (!open) { setShowCashCalc(false); clearDenominations(); } }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>{t("cash")}</DialogTitle>
+            <DialogDescription>
+              {t("remainingBalance")}: {formatCurrency(remainingToPay > 0 ? remainingToPay : finalTotal - loyaltyRedeemAmount)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-4 gap-2">
+              {cashDenominationValues.map((d) => (
+                <Button
+                  key={d}
+                  variant="outline"
+                  size="sm"
+                  className="h-10 text-sm font-medium"
+                  onClick={() => addDenomination(d)}
+                >
+                  {d >= 1 ? `$${d}` : `${Math.round(d * 100)}¢`}
+                </Button>
+              ))}
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-10 text-xs"
+                onClick={clearDenominations}
+              >
+                C
+              </Button>
+            </div>
+
+            {/* Denomination breakdown */}
+            {Object.entries(cashDenominations).filter(([, c]) => c > 0).length > 0 && (
+              <div className="border rounded-md p-2 space-y-0.5">
+                {Object.entries(cashDenominations)
+                  .filter(([, c]) => c > 0)
+                  .sort(([a], [b]) => parseFloat(b) - parseFloat(a))
+                  .map(([d, count]) => (
+                    <div key={d} className="flex justify-between text-xs">
+                      <span>{parseFloat(d) >= 1 ? `$${parseFloat(d).toFixed(0)}` : `${Math.round(parseFloat(d) * 100)}¢`} x {count}</span>
+                      <span className="font-medium">{formatCurrency(parseFloat(d) * count)}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            <div className="border-t pt-2 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">{tc("total")}</span>
+                <span className="font-bold text-base">{formatCurrency(cashTotal)}</span>
+              </div>
+              {cashChange > 0.005 && (
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>{t("balance")}</span>
+                  <span className="font-bold">{formatCurrency(cashChange)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setShowCashCalc(false); clearDenominations(); }}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              size="sm"
+              disabled={cashTotal <= 0}
+              onClick={confirmCashPayment}
+            >
+              {t("charge")} {formatCurrency(cashTotal)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Change Due Modal ── */}
+      <Dialog open={showChangeModal} onOpenChange={() => {}}>
+        <DialogContent className="max-w-xs">
+          <div className="text-center space-y-4 py-4">
+            <div className="rounded-full bg-orange-100 dark:bg-orange-900 p-5 w-20 h-20 mx-auto flex items-center justify-center">
+              <DollarSign className="h-10 w-10 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">{t("balance")}</p>
+              <p className="text-4xl font-bold text-orange-600">{formatCurrency(changeAmount)}</p>
+            </div>
+            {completedSaleNumber && (
+              <p className="text-xs text-muted-foreground">
+                {t("saleNumber")}{completedSaleNumber}
+              </p>
+            )}
+            <Button onClick={closeChangeModal} className="w-full" size="lg">
+              {tc("close")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Sell Gift Card Dialog ── */}
       <Dialog open={showSellGC} onOpenChange={(open) => !open && closeSellGCDialog()}>
