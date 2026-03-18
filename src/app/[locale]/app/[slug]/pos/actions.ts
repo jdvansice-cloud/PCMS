@@ -489,6 +489,226 @@ export async function getActivePromotions() {
 //  GIFT CARDS
 // ═══════════════════════════════════════════════════════════
 
+export async function sellGiftCardAtPos(input: {
+  amount: number;
+  expirationDays: number;
+  ownerId?: string;
+  paymentMethod: PaymentMethod;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) throw new Error("No branch");
+
+  // Generate unique code
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const parts = [0, 0].map(() => {
+      let s = "";
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    });
+    code = `GC-${parts[0]}-${parts[1]}`;
+    const existing = await prisma.giftCard.findUnique({
+      where: { organizationId_code: { organizationId, code } },
+    });
+    if (!existing) break;
+    if (attempts === 9) throw new Error("Could not generate unique gift card code");
+  }
+
+  const expiresAt =
+    input.expirationDays > 0
+      ? new Date(Date.now() + input.expirationDays * 24 * 60 * 60 * 1000)
+      : null;
+
+  // Get next sale number
+  const lastSale = await prisma.sale.findFirst({
+    where: { organizationId },
+    orderBy: { saleNumber: "desc" },
+    select: { saleNumber: true },
+  });
+  const saleNumber = (lastSale?.saleNumber ?? 0) + 1;
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Create the gift card
+    const gc = await tx.giftCard.create({
+      data: {
+        organizationId,
+        code,
+        initialBalance: input.amount,
+        balance: input.amount,
+        status: "ACTIVE",
+        expiresAt,
+        purchasedById: input.ownerId || null,
+      },
+    });
+
+    // Record the purchase transaction on the gift card
+    await tx.giftCardTx.create({
+      data: {
+        giftCardId: gc.id,
+        amount: input.amount,
+        type: "PURCHASE",
+        balanceAfter: input.amount,
+        createdById: user.id,
+      },
+    });
+
+    // Create a sale for the gift card purchase (gift cards are tax-exempt)
+    const sale = await tx.sale.create({
+      data: {
+        organizationId,
+        branchId: branch.id,
+        ownerId: input.ownerId || null,
+        saleNumber,
+        subtotal: input.amount,
+        itbms: 0,
+        total: input.amount,
+        balanceDue: 0,
+        status: "COMPLETED",
+        notes: `Gift card sold: ${code}`,
+        lines: {
+          create: {
+            description: `Gift Card ${code}`,
+            quantity: 1,
+            unitPrice: input.amount,
+            isTaxExempt: true,
+            subtotal: input.amount,
+            itbms: 0,
+            lineTotal: input.amount,
+          },
+        },
+      },
+    });
+
+    // Create payment record
+    await tx.salePayment.create({
+      data: {
+        saleId: sale.id,
+        paymentMethod: input.paymentMethod,
+        amount: input.amount,
+      },
+    });
+
+    return { giftCard: gc, saleNumber };
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "GiftCard",
+    entityId: result.giftCard.id,
+    metadata: { code, amount: input.amount, saleNumber: result.saleNumber },
+  });
+
+  revalidatePath(`/app/${slug}/pos`);
+  return { code: result.giftCard.code, saleNumber: result.saleNumber };
+}
+
+export async function topUpGiftCardAtPos(input: {
+  code: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) throw new Error("No branch");
+
+  const gc = await prisma.giftCard.findUnique({
+    where: { organizationId_code: { organizationId, code: input.code } },
+  });
+  if (!gc) throw new Error("Gift card not found");
+  if (gc.status === "CANCELLED") throw new Error("Gift card is cancelled");
+
+  const lastSale = await prisma.sale.findFirst({
+    where: { organizationId },
+    orderBy: { saleNumber: "desc" },
+    select: { saleNumber: true },
+  });
+  const saleNumber = (lastSale?.saleNumber ?? 0) + 1;
+
+  const newBalance = Number(gc.balance) + input.amount;
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Update gift card balance & reactivate if depleted/expired
+    await tx.giftCard.update({
+      where: { id: gc.id },
+      data: {
+        balance: newBalance,
+        status: "ACTIVE",
+      },
+    });
+
+    // Record top-up transaction
+    await tx.giftCardTx.create({
+      data: {
+        giftCardId: gc.id,
+        amount: input.amount,
+        type: "TOP_UP",
+        balanceAfter: newBalance,
+        createdById: user.id,
+      },
+    });
+
+    // Create a sale for the top-up (tax-exempt)
+    const sale = await tx.sale.create({
+      data: {
+        organizationId,
+        branchId: branch.id,
+        saleNumber,
+        subtotal: input.amount,
+        itbms: 0,
+        total: input.amount,
+        balanceDue: 0,
+        status: "COMPLETED",
+        notes: `Gift card top-up: ${input.code}`,
+        lines: {
+          create: {
+            description: `Gift Card Top-Up ${input.code}`,
+            quantity: 1,
+            unitPrice: input.amount,
+            isTaxExempt: true,
+            subtotal: input.amount,
+            itbms: 0,
+            lineTotal: input.amount,
+          },
+        },
+      },
+    });
+
+    await tx.salePayment.create({
+      data: {
+        saleId: sale.id,
+        paymentMethod: input.paymentMethod,
+        amount: input.amount,
+      },
+    });
+
+    return { saleNumber };
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "GiftCard",
+    entityId: gc.id,
+    metadata: { code: input.code, topUpAmount: input.amount, newBalance, saleNumber: result.saleNumber },
+  });
+
+  revalidatePath(`/app/${slug}/pos`);
+  return { code: input.code, newBalance, saleNumber: result.saleNumber };
+}
+
 export async function validateGiftCard(code: string) {
   const { organizationId } = await getCurrentUser();
 

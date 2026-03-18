@@ -39,9 +39,20 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { formatCurrency } from "@/lib/utils";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   createSale,
   validateGiftCard,
   getOwnerLoyaltyBalance,
+  sellGiftCardAtPos,
+  topUpGiftCardAtPos,
 } from "./actions";
 import type { PaymentMethod, PromotionType, DiscountUnit } from "@/generated/prisma/client";
 
@@ -283,6 +294,22 @@ export function PosTerminal({
   // ── Gift Card State ──
   const [giftCardCode, setGiftCardCode] = useState("");
   const [giftCardError, setGiftCardError] = useState("");
+
+  // ── Gift Card Sell / Top-Up State ──
+  const [showSellGC, setShowSellGC] = useState(false);
+  const [sellGCAmount, setSellGCAmount] = useState("");
+  const [sellGCExpDays, setSellGCExpDays] = useState("365");
+  const [sellGCMethod, setSellGCMethod] = useState<PaymentMethod>("CASH");
+  const [sellGCLoading, setSellGCLoading] = useState(false);
+  const [sellGCResult, setSellGCResult] = useState<{ code: string; saleNumber: number } | null>(null);
+
+  const [showTopUpGC, setShowTopUpGC] = useState(false);
+  const [topUpGCCode, setTopUpGCCode] = useState("");
+  const [topUpGCAmount, setTopUpGCAmount] = useState("");
+  const [topUpGCMethod, setTopUpGCMethod] = useState<PaymentMethod>("CASH");
+  const [topUpGCLoading, setTopUpGCLoading] = useState(false);
+  const [topUpGCError, setTopUpGCError] = useState("");
+  const [topUpGCResult, setTopUpGCResult] = useState<{ code: string; newBalance: number; saleNumber: number } | null>(null);
 
   // ── Loyalty State ──
   const [loyaltyBalance, setLoyaltyBalance] = useState<number | null>(null);
@@ -588,6 +615,63 @@ export function PosTerminal({
     } finally {
       setLoading(false);
     }
+  }
+
+  // ── Gift Card Sell ──
+  async function handleSellGiftCard() {
+    const amount = parseFloat(sellGCAmount);
+    if (!amount || amount <= 0) return;
+    setSellGCLoading(true);
+    try {
+      const result = await sellGiftCardAtPos({
+        amount,
+        expirationDays: parseInt(sellGCExpDays, 10) || 0,
+        ownerId: ownerId || undefined,
+        paymentMethod: sellGCMethod,
+      });
+      setSellGCResult(result);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error selling gift card");
+    } finally {
+      setSellGCLoading(false);
+    }
+  }
+
+  function closeSellGCDialog() {
+    setShowSellGC(false);
+    setSellGCAmount("");
+    setSellGCExpDays("365");
+    setSellGCMethod("CASH");
+    setSellGCResult(null);
+  }
+
+  // ── Gift Card Top-Up ──
+  async function handleTopUpGiftCard() {
+    const amount = parseFloat(topUpGCAmount);
+    if (!topUpGCCode.trim() || !amount || amount <= 0) return;
+    setTopUpGCLoading(true);
+    setTopUpGCError("");
+    try {
+      const result = await topUpGiftCardAtPos({
+        code: topUpGCCode.trim().toUpperCase(),
+        amount,
+        paymentMethod: topUpGCMethod,
+      });
+      setTopUpGCResult(result);
+    } catch (err: unknown) {
+      setTopUpGCError(err instanceof Error ? err.message : "Error topping up");
+    } finally {
+      setTopUpGCLoading(false);
+    }
+  }
+
+  function closeTopUpGCDialog() {
+    setShowTopUpGC(false);
+    setTopUpGCCode("");
+    setTopUpGCAmount("");
+    setTopUpGCMethod("CASH");
+    setTopUpGCError("");
+    setTopUpGCResult(null);
   }
 
   // ── Payment method labels ──
@@ -1021,9 +1105,29 @@ export function PosTerminal({
 
                 {/* ── Gift Card ── */}
                 <div className="rounded-lg border p-2.5 space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Gift className="h-3.5 w-3.5 text-purple-500" />
-                    <span className="text-xs font-medium">{t("giftCard")}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Gift className="h-3.5 w-3.5 text-purple-500" />
+                      <span className="text-xs font-medium">{t("giftCard")}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-1.5"
+                        onClick={() => setShowSellGC(true)}
+                      >
+                        {t("sellGiftCard")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-1.5"
+                        onClick={() => setShowTopUpGC(true)}
+                      >
+                        {t("topUpGiftCard")}
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex gap-1.5">
                     <Input
@@ -1196,6 +1300,162 @@ export function PosTerminal({
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Sell Gift Card Dialog ── */}
+      <Dialog open={showSellGC} onOpenChange={(open) => !open && closeSellGCDialog()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("sellGiftCard")}</DialogTitle>
+            <DialogDescription>{t("enterGiftCard")}</DialogDescription>
+          </DialogHeader>
+          {sellGCResult ? (
+            <div className="space-y-3 py-2 text-center">
+              <div className="rounded-full bg-green-100 dark:bg-green-900 p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                <Gift className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="font-mono text-lg font-bold">{sellGCResult.code}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(parseFloat(sellGCAmount))} &middot; {t("saleNumber")}{sellGCResult.saleNumber}
+              </p>
+              <DialogFooter>
+                <Button onClick={closeSellGCDialog} className="w-full">{tc("close")}</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>{tc("price")} (B/.) *</Label>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  autoFocus
+                  placeholder="0.00"
+                  value={sellGCAmount}
+                  onChange={(e) => setSellGCAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("giftCard")} — {tc("date")}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={sellGCExpDays}
+                  onChange={(e) => setSellGCExpDays(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">0 = {tc("none")}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("paymentMethod")}</Label>
+                <Select value={sellGCMethod} onValueChange={(v) => setSellGCMethod(v as PaymentMethod)}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASH">{t("cash")}</SelectItem>
+                    <SelectItem value="CARD">{t("card")}</SelectItem>
+                    <SelectItem value="YAPPY">{t("yappy")}</SelectItem>
+                    <SelectItem value="BANK_TRANSFER">{t("bankTransfer")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={closeSellGCDialog}>{tc("cancel")}</Button>
+                <Button
+                  size="sm"
+                  disabled={sellGCLoading || !sellGCAmount || parseFloat(sellGCAmount) <= 0}
+                  onClick={handleSellGiftCard}
+                >
+                  {sellGCLoading ? tc("loading") : t("sellGiftCard")}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Top-Up Gift Card Dialog ── */}
+      <Dialog open={showTopUpGC} onOpenChange={(open) => !open && closeTopUpGCDialog()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("topUpGiftCard")}</DialogTitle>
+            <DialogDescription>{t("topUpAmount")}</DialogDescription>
+          </DialogHeader>
+          {topUpGCResult ? (
+            <div className="space-y-3 py-2 text-center">
+              <div className="rounded-full bg-green-100 dark:bg-green-900 p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                <Gift className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="font-mono text-lg font-bold">{topUpGCResult.code}</p>
+              <p className="text-sm">
+                {t("giftCardBalance")}: {formatCurrency(topUpGCResult.newBalance)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("saleNumber")}{topUpGCResult.saleNumber}
+              </p>
+              <DialogFooter>
+                <Button onClick={closeTopUpGCDialog} className="w-full">{tc("close")}</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>{t("giftCardCode")} *</Label>
+                <Input
+                  className="font-mono"
+                  placeholder="GC-XXXX-XXXX"
+                  autoFocus
+                  value={topUpGCCode}
+                  onChange={(e) => {
+                    setTopUpGCCode(e.target.value.toUpperCase());
+                    setTopUpGCError("");
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("topUpAmount")} (B/.) *</Label>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={topUpGCAmount}
+                  onChange={(e) => setTopUpGCAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("paymentMethod")}</Label>
+                <Select value={topUpGCMethod} onValueChange={(v) => setTopUpGCMethod(v as PaymentMethod)}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASH">{t("cash")}</SelectItem>
+                    <SelectItem value="CARD">{t("card")}</SelectItem>
+                    <SelectItem value="YAPPY">{t("yappy")}</SelectItem>
+                    <SelectItem value="BANK_TRANSFER">{t("bankTransfer")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {topUpGCError && (
+                <p className="text-xs text-destructive">{topUpGCError}</p>
+              )}
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={closeTopUpGCDialog}>{tc("cancel")}</Button>
+                <Button
+                  size="sm"
+                  disabled={topUpGCLoading || !topUpGCCode.trim() || !topUpGCAmount || parseFloat(topUpGCAmount) <= 0}
+                  onClick={handleTopUpGiftCard}
+                >
+                  {topUpGCLoading ? tc("loading") : t("topUpGiftCard")}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
