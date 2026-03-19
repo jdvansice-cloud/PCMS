@@ -12,6 +12,8 @@ import {
   ChevronRight,
   XCircle,
   Eye,
+  Pencil,
+  Power,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -35,51 +36,77 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { formatCurrency } from "@/lib/utils";
 import {
-  getGiftCards,
-  createGiftCard,
-  bulkCreateGiftCards,
-  cancelGiftCard,
-  getGiftCard,
+  getGiftCardProducts,
+  createGiftCardProduct,
+  updateGiftCardProduct,
+  toggleGiftCardProduct,
 } from "../actions";
+import {
+  getGiftCards,
+  getGiftCard,
+  cancelGiftCard,
+} from "../actions";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type GiftCardProductRow = Awaited<ReturnType<typeof getGiftCardProducts>>[number];
 
 type GiftCardsResult = Awaited<ReturnType<typeof getGiftCards>>;
 type GiftCardRow = GiftCardsResult["items"][number];
 type GiftCardDetail = Awaited<ReturnType<typeof getGiftCard>>;
 
 interface GiftCardsClientProps {
-  initialData: GiftCardsResult;
+  denominations: GiftCardProductRow[];
+  initialCards: GiftCardsResult;
 }
 
-export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export function GiftCardsClient({
+  denominations: initialDenominations,
+  initialCards,
+}: GiftCardsClientProps) {
   const { organization } = useTenant();
   const router = useRouter();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
 
+  // ── Denomination state ──────────────────────────────────────────────────
+  const [denominations, setDenominations] =
+    useState<GiftCardProductRow[]>(initialDenominations);
+  const [showDenomDialog, setShowDenomDialog] = useState(false);
+  const [editingDenom, setEditingDenom] =
+    useState<GiftCardProductRow | null>(null);
+  const [denomSaving, setDenomSaving] = useState(false);
+  const [denomToggling, setDenomToggling] = useState<string | null>(null);
+  const [denomAmount, setDenomAmount] = useState("");
+
+  // ── Issued cards state ──────────────────────────────────────────────────
   const [giftCards, setGiftCards] = useState<GiftCardRow[]>(
-    initialData.items,
+    initialCards.items,
   );
-  const [total, setTotal] = useState(initialData.total);
-  const [totalPages, setTotalPages] = useState(initialData.totalPages);
+  const [total, setTotal] = useState(initialCards.total);
+  const [totalPages, setTotalPages] = useState(initialCards.totalPages);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [isBulk, setIsBulk] = useState(false);
-
   const [detailCard, setDetailCard] = useState<GiftCardDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-
   const [cancelling, setCancelling] = useState<string | null>(null);
 
-  const loadData = useCallback(
+  // ── Data loading ────────────────────────────────────────────────────────
+
+  async function reloadDenominations() {
+    const data = await getGiftCardProducts();
+    setDenominations(data);
+  }
+
+  const loadCards = useCallback(
     async (s?: string, p?: number) => {
       const data = await getGiftCards(s ?? search, p ?? page);
       setGiftCards(data.items);
@@ -89,42 +116,72 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
     [search, page],
   );
 
+  // ── Denomination handlers ───────────────────────────────────────────────
+
+  function openCreateDenom() {
+    setEditingDenom(null);
+    setDenomAmount("");
+    setShowDenomDialog(true);
+  }
+
+  function openEditDenom(denom: GiftCardProductRow) {
+    setEditingDenom(denom);
+    setDenomAmount(String(denom.amount));
+    setShowDenomDialog(true);
+  }
+
+  async function handleDenomSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setDenomSaving(true);
+    try {
+      const fd = new FormData(e.currentTarget);
+      const name = fd.get("name") as string;
+      const amount = parseFloat(fd.get("amount") as string);
+      const expDaysRaw = fd.get("expirationDays") as string;
+      const expirationDays = expDaysRaw ? parseInt(expDaysRaw, 10) : undefined;
+
+      if (editingDenom) {
+        await updateGiftCardProduct(editingDenom.id, {
+          name,
+          amount,
+          expirationDays,
+          isActive: editingDenom.isActive,
+        });
+      } else {
+        await createGiftCardProduct({ name, amount, expirationDays });
+      }
+
+      setShowDenomDialog(false);
+      setEditingDenom(null);
+      await reloadDenominations();
+      router.refresh();
+    } finally {
+      setDenomSaving(false);
+    }
+  }
+
+  async function handleToggleDenom(id: string) {
+    setDenomToggling(id);
+    try {
+      await toggleGiftCardProduct(id);
+      await reloadDenominations();
+      router.refresh();
+    } finally {
+      setDenomToggling(null);
+    }
+  }
+
+  // ── Issued cards handlers ───────────────────────────────────────────────
+
   async function handleSearch(value: string) {
     setSearch(value);
     setPage(1);
-    await loadData(value, 1);
+    await loadCards(value, 1);
   }
 
   async function handlePageChange(newPage: number) {
     setPage(newPage);
-    await loadData(search, newPage);
-  }
-
-  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      const fd = new FormData(e.currentTarget);
-      const amount = parseFloat(fd.get("amount") as string);
-      const expirationDays = parseInt(fd.get("expirationDays") as string, 10);
-      const notes = (fd.get("notes") as string) || undefined;
-
-      if (isBulk) {
-        const quantity = parseInt(fd.get("quantity") as string, 10);
-        await bulkCreateGiftCards({ initialBalance: amount, expirationDays, quantity });
-      } else {
-        await createGiftCard({ initialBalance: amount, expirationDays, notes });
-      }
-
-      setShowCreate(false);
-      setIsBulk(false);
-      setPage(1);
-      await loadData("", 1);
-      setSearch("");
-      router.refresh();
-    } finally {
-      setCreating(false);
-    }
+    await loadCards(search, newPage);
   }
 
   async function handleCancel(id: string) {
@@ -132,7 +189,7 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
     setCancelling(id);
     try {
       await cancelGiftCard(id);
-      await loadData();
+      await loadCards();
       router.refresh();
     } finally {
       setCancelling(null);
@@ -147,6 +204,14 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
     } finally {
       setDetailLoading(false);
     }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
+  function suggestedName(amount: string) {
+    const n = parseFloat(amount);
+    if (!amount || isNaN(n)) return "";
+    return `Gift Card $${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)}`;
   }
 
   function statusBadge(status: string) {
@@ -185,291 +250,461 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
     return new Date(date).toLocaleDateString();
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-6">
-      <PageHeader title={t("giftCardsTitle")}>
-        <div className="flex items-center gap-2">
+    <div className="space-y-8">
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Section 1: Denominations                                          */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
+      <div className="space-y-6">
+        <PageHeader title={t("giftCardsTitle")}>
           <Link href={`/app/${organization.slug}/settings`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
             </Button>
           </Link>
-          <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) setIsBulk(false); }}>
-            <DialogTrigger
-              render={<Button size="sm" className="gap-1.5" />}
-            >
-              <Plus className="h-4 w-4" /> {t("newGiftCard")}
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("newGiftCard")}</DialogTitle>
-                <DialogDescription>
-                  {t("giftCardCreateDesc")}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreate}>
-                <div className="space-y-3 py-2">
-                  <div className="space-y-1.5">
-                    <Label>{t("giftCardAmount")} *</Label>
-                    <Input
-                      name="amount"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      required
-                      autoFocus
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>{t("giftCardExpirationDays")}</Label>
-                    <Input
-                      name="expirationDays"
-                      type="number"
-                      min="0"
-                      step="1"
-                      defaultValue="365"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t("giftCardExpirationHint")}
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>{t("giftCardNotes")}</Label>
-                    <textarea
-                      name="notes"
-                      className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder={t("giftCardNotesPlaceholder")}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={isBulk}
-                      onCheckedChange={(checked) =>
-                        setIsBulk(checked === true)
-                      }
-                    />
-                    <Label className="cursor-pointer" onClick={() => setIsBulk(!isBulk)}>
-                      {t("giftCardBulkCreate")}
-                    </Label>
-                  </div>
-                  {isBulk && (
-                    <div className="space-y-1.5">
-                      <Label>{t("giftCardQuantity")} *</Label>
-                      <Input
-                        name="quantity"
-                        type="number"
-                        min="2"
-                        max="100"
-                        step="1"
-                        required
-                        defaultValue="5"
-                      />
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowCreate(false);
-                      setIsBulk(false);
-                    }}
-                  >
-                    {tc("cancel")}
-                  </Button>
-                  <Button type="submit" disabled={creating} size="sm">
-                    {creating ? tc("loading") : tc("save")}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </PageHeader>
+          <Button size="sm" className="gap-1.5" onClick={openCreateDenom}>
+            <Plus className="h-4 w-4" /> {t("newDenomination")}
+          </Button>
+        </PageHeader>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder={t("giftCardSearchPlaceholder")}
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
+        {denominations.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-4 mb-3">
+                <Gift className="h-8 w-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("noDenominations")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("noDenominationsDesc")}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="space-y-2 sm:hidden">
+              {denominations.map((d) => (
+                <Card key={d.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {d.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatCurrency(Number(d.amount))}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {d.isActive ? (
+                            <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                              {t("giftCardActive")}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                              {tc("inactive")}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {d.expirationDays
+                              ? `${d.expirationDays} ${t("denominationExpDays").toLowerCase()}`
+                              : "---"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDenom(d)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={denomToggling === d.id}
+                          onClick={() => handleToggleDenom(d.id)}
+                        >
+                          <Power className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <Card className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{tc("name")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("denominationAmount")}
+                    </TableHead>
+                    <TableHead>{t("denominationExpDays")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">
+                      {tc("actions")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {denominations.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell className="font-medium">{d.name}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(Number(d.amount))}
+                      </TableCell>
+                      <TableCell>
+                        {d.expirationDays ? d.expirationDays : "---"}
+                      </TableCell>
+                      <TableCell>
+                        {d.isActive ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            {t("giftCardActive")}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                            {tc("inactive")}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => openEditDenom(d)}
+                          >
+                            <Pencil className="h-4 w-4" /> {tc("edit")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5"
+                            disabled={denomToggling === d.id}
+                            onClick={() => handleToggleDenom(d.id)}
+                          >
+                            <Power className="h-4 w-4" />{" "}
+                            {denomToggling === d.id
+                              ? tc("loading")
+                              : d.isActive
+                                ? tc("deactivate")
+                                : tc("activate")}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </>
+        )}
       </div>
 
-      {giftCards.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-muted p-4 mb-3">
-              <Gift className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">
-              {t("noGiftCards")}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Mobile cards */}
-          <div className="space-y-2 sm:hidden">
-            {giftCards.map((gc) => (
-              <Card key={gc.id}>
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-mono font-medium truncate">
-                        {gc.code}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
-                          {t("giftCardInitial")}: {formatCurrency(Number(gc.initialBalance))}
-                        </span>
-                        <span className="text-xs font-medium">
-                          {t("giftCardCurrent")}: {formatCurrency(Number(gc.balance))}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        {statusBadge(gc.status)}
-                        {gc.expiresAt && (
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Section 2: Issued Cards                                           */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
+      <div className="space-y-6">
+        <div className="border-b border-border pb-3">
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t("issuedCards")}
+          </h2>
+        </div>
+
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder={t("giftCardSearchPlaceholder")}
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+
+        {giftCards.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-4 mb-3">
+                <Gift className="h-8 w-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("noGiftCards")}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="space-y-2 sm:hidden">
+              {giftCards.map((gc) => (
+                <Card key={gc.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-mono font-medium truncate">
+                          {gc.code}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">
-                            {t("giftCardExpires")}: {formatDate(gc.expiresAt)}
+                            {t("giftCardInitial")}:{" "}
+                            {formatCurrency(Number(gc.initialBalance))}
                           </span>
+                          <span className="text-xs font-medium">
+                            {t("giftCardCurrent")}:{" "}
+                            {formatCurrency(Number(gc.balance))}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {statusBadge(gc.status)}
+                          {gc.expiresAt && (
+                            <span className="text-xs text-muted-foreground">
+                              {t("giftCardExpires")}:{" "}
+                              {formatDate(gc.expiresAt)}
+                            </span>
+                          )}
+                        </div>
+                        {gc.purchasedBy && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("giftCardPurchasedBy")}:{" "}
+                            {gc.purchasedBy.firstName} {gc.purchasedBy.lastName}
+                          </p>
                         )}
                       </div>
-                      {gc.purchasedBy && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("giftCardPurchasedBy")}: {gc.purchasedBy.firstName} {gc.purchasedBy.lastName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetail(gc)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {gc.status === "ACTIVE" && (
+                      <div className="flex gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive"
-                          disabled={cancelling === gc.id}
-                          onClick={() => handleCancel(gc.id)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Desktop table */}
-          <Card className="hidden sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("giftCardCode")}</TableHead>
-                  <TableHead className="text-right">
-                    {t("giftCardInitialBalance")}
-                  </TableHead>
-                  <TableHead className="text-right">
-                    {t("giftCardCurrentBalance")}
-                  </TableHead>
-                  <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("giftCardExpires")}</TableHead>
-                  <TableHead>{t("giftCardPurchasedBy")}</TableHead>
-                  <TableHead className="text-right">{tc("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {giftCards.map((gc) => (
-                  <TableRow key={gc.id}>
-                    <TableCell className="font-mono font-medium">
-                      {gc.code}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(Number(gc.initialBalance))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(Number(gc.balance))}
-                    </TableCell>
-                    <TableCell>{statusBadge(gc.status)}</TableCell>
-                    <TableCell>{formatDate(gc.expiresAt)}</TableCell>
-                    <TableCell>{gc.purchasedBy ? `${gc.purchasedBy.firstName} ${gc.purchasedBy.lastName}` : "---"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1.5"
                           onClick={() => handleViewDetail(gc)}
                         >
-                          <Eye className="h-4 w-4" /> {t("giftCardDetails")}
+                          <Eye className="h-4 w-4" />
                         </Button>
                         {gc.status === "ACTIVE" && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive gap-1.5"
+                            className="text-destructive"
                             disabled={cancelling === gc.id}
                             onClick={() => handleCancel(gc.id)}
                           >
-                            <XCircle className="h-4 w-4" />{" "}
-                            {cancelling === gc.id
-                              ? tc("loading")
-                              : t("giftCardCancel")}
+                            <XCircle className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {t("giftCardTotal", { count: total })}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => handlePageChange(page - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => handlePageChange(page + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+            {/* Desktop table */}
+            <Card className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("giftCardCode")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("giftCardInitialBalance")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("giftCardCurrentBalance")}
+                    </TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead>{t("giftCardExpires")}</TableHead>
+                    <TableHead>{t("giftCardPurchasedBy")}</TableHead>
+                    <TableHead className="text-right">
+                      {tc("actions")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {giftCards.map((gc) => (
+                    <TableRow key={gc.id}>
+                      <TableCell className="font-mono font-medium">
+                        {gc.code}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(Number(gc.initialBalance))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(Number(gc.balance))}
+                      </TableCell>
+                      <TableCell>{statusBadge(gc.status)}</TableCell>
+                      <TableCell>{formatDate(gc.expiresAt)}</TableCell>
+                      <TableCell>
+                        {gc.purchasedBy
+                          ? `${gc.purchasedBy.firstName} ${gc.purchasedBy.lastName}`
+                          : "---"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => handleViewDetail(gc)}
+                          >
+                            <Eye className="h-4 w-4" /> {t("giftCardDetails")}
+                          </Button>
+                          {gc.status === "ACTIVE" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive gap-1.5"
+                              disabled={cancelling === gc.id}
+                              onClick={() => handleCancel(gc.id)}
+                            >
+                              <XCircle className="h-4 w-4" />{" "}
+                              {cancelling === gc.id
+                                ? tc("loading")
+                                : t("giftCardCancel")}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {t("giftCardTotal", { count: total })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Denomination Create/Edit Dialog                                    */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
+      <Dialog
+        open={showDenomDialog}
+        onOpenChange={(open) => {
+          setShowDenomDialog(open);
+          if (!open) setEditingDenom(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingDenom ? t("editDenomination") : t("newDenomination")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("giftCardDenominations")}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDenomSubmit}>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>{t("denominationAmount")} *</Label>
+                <Input
+                  name="amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  autoFocus
+                  placeholder="0.00"
+                  defaultValue={editingDenom ? String(editingDenom.amount) : ""}
+                  onChange={(e) => setDenomAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{tc("name")} *</Label>
+                <Input
+                  name="name"
+                  required
+                  placeholder={suggestedName(denomAmount) || "Gift Card $25"}
+                  defaultValue={
+                    editingDenom
+                      ? editingDenom.name
+                      : suggestedName(denomAmount)
+                  }
+                  key={editingDenom?.id ?? "new"}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("denominationExpDays")}</Label>
+                <Input
+                  name="expirationDays"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder=""
+                  defaultValue={
+                    editingDenom?.expirationDays
+                      ? String(editingDenom.expirationDays)
+                      : ""
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("denominationExpDaysHint")}
+                </p>
               </div>
             </div>
-          )}
-        </>
-      )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDenomDialog(false);
+                  setEditingDenom(null);
+                }}
+              >
+                {tc("cancel")}
+              </Button>
+              <Button type="submit" disabled={denomSaving} size="sm">
+                {denomSaving ? tc("loading") : tc("save")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {/* Detail Dialog */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Gift Card Detail Dialog                                            */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+
       <Dialog
         open={!!detailCard}
         onOpenChange={(open) => !open && setDetailCard(null)}
@@ -479,9 +714,7 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
             <DialogTitle>
               {t("giftCardDetails")} — {detailCard?.code}
             </DialogTitle>
-            <DialogDescription>
-              {t("giftCardDetailDesc")}
-            </DialogDescription>
+            <DialogDescription>{t("giftCardDetailDesc")}</DialogDescription>
           </DialogHeader>
           {detailLoading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
@@ -524,7 +757,11 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
                   <p className="text-muted-foreground">
                     {t("giftCardPurchasedBy")}
                   </p>
-                  <p>{detailCard?.purchasedBy ? `${detailCard.purchasedBy.firstName} ${detailCard.purchasedBy.lastName}` : "---"}</p>
+                  <p>
+                    {detailCard?.purchasedBy
+                      ? `${detailCard.purchasedBy.firstName} ${detailCard.purchasedBy.lastName}`
+                      : "---"}
+                  </p>
                 </div>
                 {detailCard.notes && (
                   <div className="col-span-2">
@@ -537,41 +774,42 @@ export function GiftCardsClient({ initialData }: GiftCardsClientProps) {
               </div>
 
               {/* Transaction History */}
-              {detailCard.transactions && detailCard.transactions.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">
-                    {t("giftCardTransactions")}
-                  </h4>
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t("giftCardTxDate")}</TableHead>
-                          <TableHead>{t("giftCardTxType")}</TableHead>
-                          <TableHead className="text-right">
-                            {t("giftCardTxAmount")}
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {detailCard.transactions.map((tx) => (
-                          <TableRow key={tx.id}>
-                            <TableCell className="text-xs">
-                              {formatDate(tx.createdAt)}
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {tx.type}
-                            </TableCell>
-                            <TableCell className="text-xs text-right">
-                              {formatCurrency(Number(tx.amount))}
-                            </TableCell>
+              {detailCard.transactions &&
+                detailCard.transactions.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">
+                      {t("giftCardTransactions")}
+                    </h4>
+                    <div className="border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t("giftCardTxDate")}</TableHead>
+                            <TableHead>{t("giftCardTxType")}</TableHead>
+                            <TableHead className="text-right">
+                              {t("giftCardTxAmount")}
+                            </TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {detailCard.transactions.map((tx) => (
+                            <TableRow key={tx.id}>
+                              <TableCell className="text-xs">
+                                {formatDate(tx.createdAt)}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {tx.type}
+                              </TableCell>
+                              <TableCell className="text-xs text-right">
+                                {formatCurrency(Number(tx.amount))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           ) : null}
           <DialogFooter>

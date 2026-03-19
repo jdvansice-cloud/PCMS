@@ -10,7 +10,7 @@ import type { PaymentMethod, DiscountType } from "@/generated/prisma/client";
 export async function getPosData() {
   const { organizationId } = await getCurrentUser();
 
-  const [products, services, owners] = await Promise.all([
+  const [products, services, owners, giftCardProducts] = await Promise.all([
     prisma.product.findMany({
       where: { organizationId, isActive: true },
       select: {
@@ -33,14 +33,21 @@ export async function getPosData() {
       select: { id: true, firstName: true, lastName: true },
       orderBy: { firstName: "asc" },
     }),
+    prisma.giftCardProduct.findMany({
+      where: { organizationId, isActive: true },
+      select: { id: true, name: true, amount: true, expirationDays: true },
+      orderBy: { amount: "asc" },
+    }),
   ]);
 
-  return { products, services, owners };
+  return { products, services, owners, giftCardProducts };
 }
 
 type CartItem = {
   productId?: string;
   serviceId?: string;
+  giftCardProductId?: string;
+  isGiftCard?: boolean;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -103,10 +110,12 @@ export async function createSale(input: {
     return {
       productId: item.productId || null,
       serviceId: item.serviceId || null,
+      giftCardProductId: item.giftCardProductId || null,
       description: item.description,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       isTaxExempt: item.isTaxExempt,
+      isInvoiceable: !item.isGiftCard,
       discountAmount: lineDiscount > 0 ? lineDiscount : null,
       discountType:
         lineDiscount > 0 ? (item.discountType as DiscountType) : null,
@@ -180,6 +189,23 @@ export async function createSale(input: {
 
   if (paymentInputs.length === 0) {
     throw new Error("At least one payment method is required");
+  }
+
+  // --- f2. Validate gift card payment restriction ---
+  const giftCardLinesTotal = input.items
+    .filter((item) => item.isGiftCard)
+    .reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+
+  if (giftCardLinesTotal > 0) {
+    const giftCardPaymentTotal = paymentInputs
+      .filter((p) => p.method === "GIFT_CARD")
+      .reduce((sum, p) => sum + p.amount, 0);
+    const maxGiftCardPayment = total - giftCardLinesTotal;
+    if (giftCardPaymentTotal > maxGiftCardPayment + 0.01) {
+      throw new Error(
+        `Gift card payment cannot exceed ${maxGiftCardPayment.toFixed(2)} (gift card purchases must be paid with other methods)`,
+      );
+    }
   }
 
   // --- g. Execute in transaction for atomicity ---
@@ -318,6 +344,66 @@ export async function createSale(input: {
       }
     }
 
+    // Generate GiftCard records for gift card line items
+    const generatedGiftCards: { code: string; amount: number }[] = [];
+    const gcChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (const item of input.items) {
+      if (item.isGiftCard && item.giftCardProductId) {
+        // Look up the gift card product for expiration days
+        const gcProduct = await tx.giftCardProduct.findUnique({
+          where: { id: item.giftCardProductId },
+          select: { expirationDays: true },
+        });
+        const expDays = gcProduct?.expirationDays;
+        const expiresAt = expDays && expDays > 0
+          ? new Date(Date.now() + expDays * 24 * 60 * 60 * 1000)
+          : null;
+
+        // Generate one GiftCard per quantity unit
+        for (let q = 0; q < item.quantity; q++) {
+          let code = "";
+          for (let attempts = 0; attempts < 10; attempts++) {
+            const parts = [0, 0].map(() => {
+              let s = "";
+              for (let i = 0; i < 4; i++) s += gcChars[Math.floor(Math.random() * gcChars.length)];
+              return s;
+            });
+            code = `GC-${parts[0]}-${parts[1]}`;
+            const existing = await tx.giftCard.findUnique({
+              where: { organizationId_code: { organizationId, code } },
+            });
+            if (!existing) break;
+            if (attempts === 9) throw new Error("Could not generate unique gift card code");
+          }
+
+          const gc = await tx.giftCard.create({
+            data: {
+              organizationId,
+              code,
+              initialBalance: item.unitPrice,
+              balance: item.unitPrice,
+              status: "ACTIVE",
+              expiresAt,
+              purchasedById: input.ownerId || null,
+            },
+          });
+
+          await tx.giftCardTx.create({
+            data: {
+              giftCardId: gc.id,
+              saleId: sale.id,
+              amount: item.unitPrice,
+              type: "PURCHASE",
+              balanceAfter: item.unitPrice,
+              createdById: user.id,
+            },
+          });
+
+          generatedGiftCards.push({ code, amount: item.unitPrice });
+        }
+      }
+    }
+
     // Earn loyalty points if enabled and owner is selected
     if (input.ownerId) {
       const loyaltyConfig = await tx.loyaltyConfig.findUnique({
@@ -364,7 +450,7 @@ export async function createSale(input: {
       }
     }
 
-    return { saleId: sale.id, saleNumber };
+    return { saleId: sale.id, saleNumber, generatedGiftCards };
   });
 
   await createAuditLog({
@@ -488,127 +574,6 @@ export async function getActivePromotions() {
 // ═══════════════════════════════════════════════════════════
 //  GIFT CARDS
 // ═══════════════════════════════════════════════════════════
-
-export async function sellGiftCardAtPos(input: {
-  amount: number;
-  expirationDays: number;
-  ownerId?: string;
-  paymentMethod: PaymentMethod;
-}) {
-  const { user, organizationId, slug } = await getCurrentUser();
-
-  const branch = await prisma.branch.findFirst({
-    where: { organizationId, isMain: true },
-    select: { id: true },
-  });
-  if (!branch) throw new Error("No branch");
-
-  // Generate unique code
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let attempts = 0; attempts < 10; attempts++) {
-    const parts = [0, 0].map(() => {
-      let s = "";
-      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
-      return s;
-    });
-    code = `GC-${parts[0]}-${parts[1]}`;
-    const existing = await prisma.giftCard.findUnique({
-      where: { organizationId_code: { organizationId, code } },
-    });
-    if (!existing) break;
-    if (attempts === 9) throw new Error("Could not generate unique gift card code");
-  }
-
-  const expiresAt =
-    input.expirationDays > 0
-      ? new Date(Date.now() + input.expirationDays * 24 * 60 * 60 * 1000)
-      : null;
-
-  // Get next sale number
-  const lastSale = await prisma.sale.findFirst({
-    where: { organizationId },
-    orderBy: { saleNumber: "desc" },
-    select: { saleNumber: true },
-  });
-  const saleNumber = (lastSale?.saleNumber ?? 0) + 1;
-
-  const result = await prisma.$transaction(async (tx) => {
-    // Create the gift card
-    const gc = await tx.giftCard.create({
-      data: {
-        organizationId,
-        code,
-        initialBalance: input.amount,
-        balance: input.amount,
-        status: "ACTIVE",
-        expiresAt,
-        purchasedById: input.ownerId || null,
-      },
-    });
-
-    // Record the purchase transaction on the gift card
-    await tx.giftCardTx.create({
-      data: {
-        giftCardId: gc.id,
-        amount: input.amount,
-        type: "PURCHASE",
-        balanceAfter: input.amount,
-        createdById: user.id,
-      },
-    });
-
-    // Create a sale for the gift card purchase (gift cards are tax-exempt)
-    const sale = await tx.sale.create({
-      data: {
-        organizationId,
-        branchId: branch.id,
-        ownerId: input.ownerId || null,
-        saleNumber,
-        subtotal: input.amount,
-        itbms: 0,
-        total: input.amount,
-        balanceDue: 0,
-        status: "COMPLETED",
-        notes: `Gift card sold: ${code}`,
-        lines: {
-          create: {
-            description: `Gift Card ${code}`,
-            quantity: 1,
-            unitPrice: input.amount,
-            isTaxExempt: true,
-            subtotal: input.amount,
-            itbms: 0,
-            lineTotal: input.amount,
-          },
-        },
-      },
-    });
-
-    // Create payment record
-    await tx.salePayment.create({
-      data: {
-        saleId: sale.id,
-        paymentMethod: input.paymentMethod,
-        amount: input.amount,
-      },
-    });
-
-    return { giftCard: gc, saleNumber };
-  });
-
-  await createAuditLog({
-    organizationId,
-    userId: user.id,
-    action: "CREATE",
-    entityType: "GiftCard",
-    entityId: result.giftCard.id,
-    metadata: { code, amount: input.amount, saleNumber: result.saleNumber },
-  });
-
-  revalidatePath(`/app/${slug}/pos`);
-  return { code: result.giftCard.code, saleNumber: result.saleNumber };
-}
 
 export async function topUpGiftCardAtPos(input: {
   code: string;

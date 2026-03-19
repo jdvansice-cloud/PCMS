@@ -906,82 +906,6 @@ export async function getGiftCard(id: string) {
   });
 }
 
-export async function createGiftCard(input: {
-  initialBalance: number;
-  expirationDays?: number;
-  purchasedById?: string;
-  notes?: string;
-}) {
-  const { user, organizationId, slug } = await getCurrentUser();
-
-  const code = generateGiftCardCode();
-  const expiresAt =
-    input.expirationDays && input.expirationDays > 0
-      ? new Date(Date.now() + input.expirationDays * 86400000)
-      : null;
-
-  const giftCard = await prisma.giftCard.create({
-    data: {
-      organizationId,
-      code,
-      initialBalance: input.initialBalance,
-      balance: input.initialBalance,
-      expiresAt,
-      purchasedById: input.purchasedById || null,
-      notes: input.notes || null,
-    },
-  });
-
-  await createAuditLog({
-    organizationId,
-    userId: user.id,
-    action: "CREATE",
-    entityType: "GiftCard",
-    entityId: giftCard.id,
-    metadata: { code, initialBalance: input.initialBalance },
-  });
-
-  revalidatePath(`/app/${slug}/settings`);
-  return { success: true, giftCard };
-}
-
-export async function bulkCreateGiftCards(input: {
-  quantity: number;
-  initialBalance: number;
-  expirationDays?: number;
-}) {
-  const { user, organizationId, slug } = await getCurrentUser();
-
-  const expiresAt =
-    input.expirationDays && input.expirationDays > 0
-      ? new Date(Date.now() + input.expirationDays * 86400000)
-      : null;
-
-  const cards = Array.from({ length: input.quantity }, () => ({
-    organizationId,
-    code: generateGiftCardCode(),
-    initialBalance: input.initialBalance,
-    balance: input.initialBalance,
-    expiresAt,
-  }));
-
-  const result = await prisma.$transaction(
-    cards.map((card) => prisma.giftCard.create({ data: card })),
-  );
-
-  await createAuditLog({
-    organizationId,
-    userId: user.id,
-    action: "CREATE",
-    entityType: "GiftCard",
-    entityId: "bulk",
-    metadata: { quantity: input.quantity, initialBalance: input.initialBalance },
-  });
-
-  revalidatePath(`/app/${slug}/settings`);
-  return { success: true, count: result.length };
-}
-
 export async function cancelGiftCard(id: string) {
   const { user, organizationId, slug } = await getCurrentUser();
 
@@ -1006,6 +930,90 @@ export async function cancelGiftCard(id: string) {
 
   revalidatePath(`/app/${slug}/settings`);
   return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GIFT CARD PRODUCTS (Denominations)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getGiftCardProducts() {
+  const { organizationId } = await getCurrentUser();
+  return prisma.giftCardProduct.findMany({
+    where: { organizationId },
+    orderBy: { amount: "asc" },
+  });
+}
+
+export async function createGiftCardProduct(input: {
+  name: string;
+  amount: number;
+  expirationDays?: number;
+}) {
+  const { user, organizationId } = await getCurrentUser();
+  const product = await prisma.giftCardProduct.create({
+    data: {
+      organizationId,
+      name: input.name,
+      amount: input.amount,
+      expirationDays: input.expirationDays ?? null,
+    },
+  });
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "GiftCardProduct",
+    entityId: product.id,
+    metadata: { name: input.name, amount: input.amount },
+  });
+  revalidatePath(`/app`);
+  return product;
+}
+
+export async function updateGiftCardProduct(
+  id: string,
+  input: { name: string; amount: number; expirationDays?: number; isActive: boolean },
+) {
+  const { user, organizationId } = await getCurrentUser();
+  const product = await prisma.giftCardProduct.update({
+    where: { id },
+    data: {
+      name: input.name,
+      amount: input.amount,
+      expirationDays: input.expirationDays ?? null,
+      isActive: input.isActive,
+    },
+  });
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "GiftCardProduct",
+    entityId: id,
+    metadata: { name: input.name, amount: input.amount, isActive: input.isActive },
+  });
+  revalidatePath(`/app`);
+  return product;
+}
+
+export async function toggleGiftCardProduct(id: string) {
+  const { user, organizationId } = await getCurrentUser();
+  const existing = await prisma.giftCardProduct.findUnique({ where: { id } });
+  if (!existing) throw new Error("Gift card product not found");
+  const updated = await prisma.giftCardProduct.update({
+    where: { id },
+    data: { isActive: !existing.isActive },
+  });
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "GiftCardProduct",
+    entityId: id,
+    metadata: { isActive: updated.isActive },
+  });
+  revalidatePath(`/app`);
+  return updated;
 }
 
 // ─── Promotions ──────────────────────────────────────────────────────────────

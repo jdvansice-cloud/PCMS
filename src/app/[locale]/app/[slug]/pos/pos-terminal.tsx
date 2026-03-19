@@ -51,7 +51,6 @@ import {
   createSale,
   validateGiftCard,
   getOwnerLoyaltyBalance,
-  sellGiftCardAtPos,
   topUpGiftCardAtPos,
 } from "./actions";
 import type { PaymentMethod, PromotionType, DiscountUnit } from "@/generated/prisma/client";
@@ -62,6 +61,8 @@ type CartItem = {
   key: string;
   productId?: string;
   serviceId?: string;
+  giftCardProductId?: string;
+  isGiftCard?: boolean;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -87,6 +88,12 @@ type PosData = {
     type: string;
   }[];
   owners: { id: string; firstName: string; lastName: string }[];
+  giftCardProducts: {
+    id: string;
+    name: string;
+    amount: unknown;
+    expirationDays: number | null;
+  }[];
 };
 
 type Promotion = {
@@ -276,7 +283,7 @@ export function PosTerminal({
   // ── Core State ──
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"products" | "services">("products");
+  const [tab, setTab] = useState<"products" | "services" | "giftCards">("products");
   const [ownerId, setOwnerId] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -295,14 +302,7 @@ export function PosTerminal({
   const [giftCardCode, setGiftCardCode] = useState("");
   const [giftCardError, setGiftCardError] = useState("");
 
-  // ── Gift Card Sell / Top-Up State ──
-  const [showSellGC, setShowSellGC] = useState(false);
-  const [sellGCAmount, setSellGCAmount] = useState("");
-  const [sellGCExpDays, setSellGCExpDays] = useState("365");
-  const [sellGCMethod, setSellGCMethod] = useState<PaymentMethod>("CASH");
-  const [sellGCLoading, setSellGCLoading] = useState(false);
-  const [sellGCResult, setSellGCResult] = useState<{ code: string; saleNumber: number } | null>(null);
-
+  // ── Gift Card Top-Up State ──
   const [showTopUpGC, setShowTopUpGC] = useState(false);
   const [topUpGCCode, setTopUpGCCode] = useState("");
   const [topUpGCAmount, setTopUpGCAmount] = useState("");
@@ -337,7 +337,27 @@ export function PosTerminal({
     [data.services, search],
   );
 
+  // ── Generated Gift Cards Modal ──
+  const [showGCCodes, setShowGCCodes] = useState(false);
+  const [generatedCodes, setGeneratedCodes] = useState<{ code: string; amount: number }[]>([]);
+
   // ── Cart Functions ──
+  function addGiftCardProduct(gcp: PosData["giftCardProducts"][0]) {
+    const key = `gc-${gcp.id}-${Date.now()}`;
+    setCart((prev) => [
+      ...prev,
+      {
+        key,
+        giftCardProductId: gcp.id,
+        isGiftCard: true,
+        description: gcp.name,
+        quantity: 1,
+        unitPrice: Number(gcp.amount),
+        isTaxExempt: true,
+      },
+    ]);
+  }
+
   function addProduct(p: PosData["products"][0]) {
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === p.id);
@@ -513,6 +533,13 @@ export function PosTerminal({
   );
   const remainingToPay = Math.max(0, finalTotal - totalPaid);
 
+  // ── Gift Card Payment Restriction ──
+  const giftCardItemsTotal = useMemo(
+    () => cart.filter((i) => i.isGiftCard).reduce((s, i) => s + i.unitPrice * i.quantity - calcLineDiscount(i), 0),
+    [cart],
+  );
+  const maxGiftCardPayment = Math.max(0, finalTotal - giftCardItemsTotal);
+
   // ── Cash Calculator State ──
   const [showCashCalc, setShowCashCalc] = useState(false);
   const [cashDenominations, setCashDenominations] = useState<Record<number, number>>({});
@@ -606,9 +633,18 @@ export function PosTerminal({
     if (!giftCardCode.trim()) return;
     setGiftCardError("");
 
+    // Check if gift card payment is allowed (can't pay for gift card items with gift card)
+    const existingGCPayment = payments
+      .filter((p) => p.method === "GIFT_CARD")
+      .reduce((s, p) => s + p.amount, 0);
+    if (existingGCPayment >= maxGiftCardPayment) {
+      setGiftCardError(t("cannotPayGiftCardWithGiftCard"));
+      return;
+    }
+
     // Check not already added
     if (payments.some((p) => p.giftCardCode === giftCardCode.trim())) {
-      setGiftCardError(t("promoUsed"));
+      setGiftCardError(t("giftCardInvalid"));
       return;
     }
 
@@ -618,7 +654,8 @@ export function PosTerminal({
         setGiftCardError(result.reason || t("giftCardInvalid"));
         return;
       }
-      const applyAmount = Math.min(result.balance!, remainingToPay || finalTotal);
+      const availableForGC = maxGiftCardPayment - existingGCPayment;
+      const applyAmount = Math.min(result.balance!, remainingToPay || finalTotal, availableForGC);
       if (applyAmount <= 0) {
         setGiftCardError(t("giftCardInsufficient"));
         return;
@@ -706,6 +743,12 @@ export function PosTerminal({
         discountedById: totalDiscount > 0 ? userId : undefined,
       });
 
+      // Show generated gift card codes if any
+      if (result.generatedGiftCards && result.generatedGiftCards.length > 0) {
+        setGeneratedCodes(result.generatedGiftCards);
+        setShowGCCodes(true);
+      }
+
       if (hasCashChange) {
         // Show change modal
         setChangeAmount(Math.round(overpaid * 100) / 100);
@@ -725,8 +768,7 @@ export function PosTerminal({
       setGiftCardCode("");
       setSearch("");
 
-      if (!hasCashChange) {
-        // No change due — just reset (stay on POS for new sale)
+      if (!hasCashChange && !(result.generatedGiftCards && result.generatedGiftCards.length > 0)) {
         router.refresh();
       }
     } finally {
@@ -739,34 +781,6 @@ export function PosTerminal({
     setChangeAmount(0);
     setCompletedSaleNumber(null);
     router.refresh();
-  }
-
-  // ── Gift Card Sell ──
-  async function handleSellGiftCard() {
-    const amount = parseFloat(sellGCAmount);
-    if (!amount || amount <= 0) return;
-    setSellGCLoading(true);
-    try {
-      const result = await sellGiftCardAtPos({
-        amount,
-        expirationDays: parseInt(sellGCExpDays, 10) || 0,
-        ownerId: ownerId || undefined,
-        paymentMethod: sellGCMethod,
-      });
-      setSellGCResult(result);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Error selling gift card");
-    } finally {
-      setSellGCLoading(false);
-    }
-  }
-
-  function closeSellGCDialog() {
-    setShowSellGC(false);
-    setSellGCAmount("");
-    setSellGCExpDays("365");
-    setSellGCMethod("CASH");
-    setSellGCResult(null);
   }
 
   // ── Gift Card Top-Up ──
@@ -851,6 +865,16 @@ export function PosTerminal({
             >
               <ClipboardList className="h-3.5 w-3.5" /> {t("services")}
             </Button>
+            {data.giftCardProducts.length > 0 && (
+              <Button
+                variant={tab === "giftCards" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTab("giftCards")}
+                className="gap-1.5"
+              >
+                <Gift className="h-3.5 w-3.5" /> {t("giftCardProducts")}
+              </Button>
+            )}
           </div>
 
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
@@ -872,18 +896,34 @@ export function PosTerminal({
                     </div>
                   </button>
                 ))
-              : filteredServices.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => addService(s)}
-                    className="text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                  >
-                    <p className="text-sm font-medium truncate">{s.name}</p>
-                    <span className="text-sm font-semibold">
-                      {formatCurrency(Number(s.price))}
-                    </span>
-                  </button>
-                ))}
+              : tab === "services"
+                ? filteredServices.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => addService(s)}
+                      className="text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    >
+                      <p className="text-sm font-medium truncate">{s.name}</p>
+                      <span className="text-sm font-semibold">
+                        {formatCurrency(Number(s.price))}
+                      </span>
+                    </button>
+                  ))
+                : data.giftCardProducts.map((gcp) => (
+                    <button
+                      key={gcp.id}
+                      onClick={() => addGiftCardProduct(gcp)}
+                      className="text-left p-3 rounded-lg border border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-900/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Gift className="h-3.5 w-3.5 text-purple-500" />
+                        <p className="text-sm font-medium truncate">{gcp.name}</p>
+                      </div>
+                      <span className="text-sm font-semibold">
+                        {formatCurrency(Number(gcp.amount))}
+                      </span>
+                    </button>
+                  ))}
           </div>
         </div>
 
@@ -915,6 +955,7 @@ export function PosTerminal({
                       <div className="flex items-center gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
+                            {item.isGiftCard && <Gift className="inline h-3 w-3 text-purple-500 mr-1" />}
                             {item.description}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -1258,24 +1299,14 @@ export function PosTerminal({
                       <Gift className="h-3.5 w-3.5 text-purple-500" />
                       <span className="text-xs font-medium">{t("giftCard")}</span>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-1.5"
-                        onClick={() => setShowSellGC(true)}
-                      >
-                        {t("sellGiftCard")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-1.5"
-                        onClick={() => setShowTopUpGC(true)}
-                      >
-                        {t("topUpGiftCard")}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-1.5"
+                      onClick={() => setShowTopUpGC(true)}
+                    >
+                      {t("topUpGiftCard")}
+                    </Button>
                   </div>
                   <div className="flex gap-1.5">
                     <Input
@@ -1302,6 +1333,11 @@ export function PosTerminal({
                   </div>
                   {giftCardError && (
                     <p className="text-xs text-destructive">{giftCardError}</p>
+                  )}
+                  {giftCardItemsTotal > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("giftCardPaymentLimit", { amount: formatCurrency(maxGiftCardPayment) })}
+                    </p>
                   )}
                 </div>
 
@@ -1558,78 +1594,29 @@ export function PosTerminal({
         </DialogContent>
       </Dialog>
 
-      {/* ── Sell Gift Card Dialog ── */}
-      <Dialog open={showSellGC} onOpenChange={(open) => !open && closeSellGCDialog()}>
+      {/* ── Generated Gift Card Codes Dialog ── */}
+      <Dialog open={showGCCodes} onOpenChange={(open) => { if (!open) { setShowGCCodes(false); setGeneratedCodes([]); router.refresh(); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t("sellGiftCard")}</DialogTitle>
-            <DialogDescription>{t("enterGiftCard")}</DialogDescription>
+            <DialogTitle>{t("giftCardCodes")}</DialogTitle>
+            <DialogDescription>{t("giftCardGenerated")}</DialogDescription>
           </DialogHeader>
-          {sellGCResult ? (
-            <div className="space-y-3 py-2 text-center">
-              <div className="rounded-full bg-green-100 dark:bg-green-900 p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                <Gift className="h-8 w-8 text-green-600" />
+          <div className="space-y-2 py-2">
+            {generatedCodes.map((gc, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-purple-500" />
+                  <span className="font-mono font-bold text-sm">{gc.code}</span>
+                </div>
+                <span className="text-sm font-semibold">{formatCurrency(gc.amount)}</span>
               </div>
-              <p className="font-mono text-lg font-bold">{sellGCResult.code}</p>
-              <p className="text-sm text-muted-foreground">
-                {formatCurrency(parseFloat(sellGCAmount))} &middot; {t("saleNumber")}{sellGCResult.saleNumber}
-              </p>
-              <DialogFooter>
-                <Button onClick={closeSellGCDialog} className="w-full">{tc("close")}</Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="space-y-3 py-2">
-              <div className="space-y-1.5">
-                <Label>{tc("price")} (B/.) *</Label>
-                <Input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  autoFocus
-                  placeholder="0.00"
-                  value={sellGCAmount}
-                  onChange={(e) => setSellGCAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("giftCard")} — {tc("date")}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={sellGCExpDays}
-                  onChange={(e) => setSellGCExpDays(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">0 = {tc("none")}</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("paymentMethod")}</Label>
-                <Select value={sellGCMethod} onValueChange={(v) => setSellGCMethod(v as PaymentMethod)}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CASH">{t("cash")}</SelectItem>
-                    <SelectItem value="CARD">{t("card")}</SelectItem>
-                    <SelectItem value="YAPPY">{t("yappy")}</SelectItem>
-                    <SelectItem value="BANK_TRANSFER">{t("bankTransfer")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" size="sm" onClick={closeSellGCDialog}>{tc("cancel")}</Button>
-                <Button
-                  size="sm"
-                  disabled={sellGCLoading || !sellGCAmount || parseFloat(sellGCAmount) <= 0}
-                  onClick={handleSellGiftCard}
-                >
-                  {sellGCLoading ? tc("loading") : t("sellGiftCard")}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => { setShowGCCodes(false); setGeneratedCodes([]); router.refresh(); }} className="w-full">
+              {tc("close")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

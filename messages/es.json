@@ -248,7 +248,12 @@
     "selectClient": "Seleccionar cliente",
     "saleDetail": "Detalle de Venta",
     "promotionsApplied": "Promociones aplicadas",
-    "paymentBreakdown": "Desglose de pago"
+    "paymentBreakdown": "Desglose de pago",
+    "giftCardProducts": "Tarjetas de Regalo",
+    "giftCardPaymentLimit": "Pago con tarjeta de regalo limitado a {amount}",
+    "cannotPayGiftCardWithGiftCard": "No se puede pagar la compra de tarjetas de regalo con tarjeta de regalo",
+    "giftCardGenerated": "Tarjeta de regalo creada",
+    "giftCardCodes": "Códigos de Tarjetas de Regalo"
   },
   "inventory": {
     "title": "Inventario",
@@ -608,6 +613,15 @@
     "promoUsageLimitPlaceholder": "Ilimitado",
     "promoPerCustomerLimit": "Límite por cliente",
     "promoStartDate": "Fecha de inicio",
-    "promoEndDate": "Fecha de fin"
+    "promoEndDate": "Fecha de fin",
+    "giftCardDenominations": "Denominaciones",
+    "newDenomination": "Nueva Denominación",
+    "editDenomination": "Editar Denominación",
+    "issuedCards": "Tarjetas Emitidas",
+    "denominationAmount": "Monto (B/.)",
+    "denominationExpDays": "Días de validez",
+    "denominationExpDaysHint": "Desde la fecha de venta (vacío = sin vencimiento)",
+    "noDenominations": "No hay denominaciones creadas",
+    "noDenominationsDesc": "Crea denominaciones de tarjetas de regalo para vender en el POS"
   }
 }

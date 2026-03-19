@@ -248,7 +248,12 @@
     "selectClient": "Select client",
     "saleDetail": "Sale Detail",
     "promotionsApplied": "Promotions applied",
-    "paymentBreakdown": "Payment breakdown"
+    "paymentBreakdown": "Payment breakdown",
+    "giftCardProducts": "Gift Cards",
+    "giftCardPaymentLimit": "Gift card payment limited to {amount}",
+    "cannotPayGiftCardWithGiftCard": "Gift card purchases cannot be paid with gift card",
+    "giftCardGenerated": "Gift card created",
+    "giftCardCodes": "Gift Card Codes"
   },
   "inventory": {
     "title": "Inventory",
@@ -607,6 +612,15 @@
     "promoUsageLimitPlaceholder": "Unlimited",
     "promoPerCustomerLimit": "Per customer limit",
     "promoStartDate": "Start date",
-    "promoEndDate": "End date"
+    "promoEndDate": "End date",
+    "giftCardDenominations": "Denominations",
+    "newDenomination": "New Denomination",
+    "editDenomination": "Edit Denomination",
+    "issuedCards": "Issued Cards",
+    "denominationAmount": "Amount (B/.)",
+    "denominationExpDays": "Validity days",
+    "denominationExpDaysHint": "From date of sale (empty = never expires)",
+    "noDenominations": "No denominations created",
+    "noDenominationsDesc": "Create gift card denominations to sell at POS"
   }
 }

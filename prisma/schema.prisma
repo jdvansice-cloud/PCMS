@@ -253,7 +253,8 @@ model Organization {
   emailTemplates  EmailTemplate[]
   emailLogs       EmailLog[]
   auditLogs       AuditLog[]
-  giftCards       GiftCard[]
+  giftCards        GiftCard[]
+  giftCardProducts GiftCardProduct[]
   promotions      Promotion[]
   loyaltyConfig   LoyaltyConfig?
   loyaltyLedger   LoyaltyLedger[]
@@ -989,15 +990,18 @@ model SaleLine {
   unitPrice      Decimal       @db.Decimal(10, 2) @map("unit_price")
   discountAmount Decimal?      @db.Decimal(10, 2) @map("discount_amount")
   discountType   DiscountType? @map("discount_type")
-  isTaxExempt    Boolean       @default(false) @map("is_tax_exempt")
-  subtotal       Decimal       @db.Decimal(10, 2)
-  itbms          Decimal       @db.Decimal(10, 2)
-  lineTotal      Decimal       @db.Decimal(10, 2) @map("line_total")
+  giftCardProductId String?       @map("gift_card_product_id")
+  isTaxExempt       Boolean       @default(false) @map("is_tax_exempt")
+  isInvoiceable     Boolean       @default(true) @map("is_invoiceable")
+  subtotal          Decimal       @db.Decimal(10, 2)
+  itbms             Decimal       @db.Decimal(10, 2)
+  lineTotal         Decimal       @db.Decimal(10, 2) @map("line_total")
 
-  sale       Sale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product    Product?        @relation(fields: [productId], references: [id])
-  service    Service?        @relation(fields: [serviceId], references: [id])
-  promoLinks SalePromotion[]
+  sale            Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  service         Service?         @relation(fields: [serviceId], references: [id])
+  giftCardProduct GiftCardProduct? @relation(fields: [giftCardProductId], references: [id])
+  promoLinks      SalePromotion[]
 
   @@map("sale_lines")
 }
@@ -1072,6 +1076,23 @@ model GiftCardTx {
 
   @@index([giftCardId, createdAt])
   @@map("gift_card_transactions")
+}
+
+model GiftCardProduct {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String
+  amount         Decimal  @db.Decimal(10, 2)
+  expirationDays Int?     @map("expiration_days")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  saleLines    SaleLine[]
+
+  @@index([organizationId, isActive])
+  @@map("gift_card_products")
 }
 
 // ═══════════════════════════════════════════════════════════
