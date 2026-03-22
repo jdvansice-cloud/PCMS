@@ -184,7 +184,11 @@
       "FOLLOW_UP": "Follow-up",
       "EMERGENCY": "Emergency",
       "OTHER": "Other"
-    }
+    },
+    "selectClient": "Select client",
+    "selectPet": "Select pet",
+    "selectVet": "Assign later",
+    "selectService": "Select service"
   },
   "pos": {
     "title": "Point of Sale",
