@@ -1292,3 +1292,158 @@ export async function togglePromotion(id: string) {
   revalidatePath(`/app/${slug}/settings`);
   return { success: true };
 }
+
+// ═══════════════════════════════════════════════════════════
+//  GROOMING CONFIG
+// ═══════════════════════════════════════════════════════════
+
+export async function getGroomingConfig() {
+  const { organizationId } = await getCurrentUser();
+
+  const config = await prisma.groomingConfig.findUnique({
+    where: { organizationId },
+  });
+
+  if (config) return config;
+
+  return prisma.groomingConfig.create({
+    data: { organizationId },
+  });
+}
+
+export async function updateGroomingConfig(data: {
+  isOnlineBookingEnabled: boolean;
+  maxAdvanceDays: number;
+  pickupCutoffTime: string;
+  receivingCutoffTime: string;
+  freeBathEnabled: boolean;
+  freeBathThreshold: number;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const current = await prisma.groomingConfig.findUnique({
+    where: { organizationId },
+  });
+
+  const updated = await prisma.groomingConfig.upsert({
+    where: { organizationId },
+    update: {
+      isOnlineBookingEnabled: data.isOnlineBookingEnabled,
+      maxAdvanceDays: data.maxAdvanceDays,
+      pickupCutoffTime: data.pickupCutoffTime,
+      receivingCutoffTime: data.receivingCutoffTime,
+      freeBathEnabled: data.freeBathEnabled,
+      freeBathThreshold: data.freeBathThreshold,
+    },
+    create: {
+      organizationId,
+      isOnlineBookingEnabled: data.isOnlineBookingEnabled,
+      maxAdvanceDays: data.maxAdvanceDays,
+      pickupCutoffTime: data.pickupCutoffTime,
+      receivingCutoffTime: data.receivingCutoffTime,
+      freeBathEnabled: data.freeBathEnabled,
+      freeBathThreshold: data.freeBathThreshold,
+    },
+  });
+
+  if (current) {
+    const changes = diffChanges(current, updated);
+    if (changes) {
+      await createAuditLog({
+        organizationId,
+        userId: user.id,
+        action: "UPDATE",
+        entityType: "GroomingConfig",
+        entityId: updated.id,
+        changes,
+      });
+    }
+  } else {
+    await createAuditLog({
+      organizationId,
+      userId: user.id,
+      action: "CREATE",
+      entityType: "GroomingConfig",
+      entityId: updated.id,
+    });
+  }
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
+
+export async function getGroomingKennels() {
+  const { organizationId } = await getCurrentUser();
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+  });
+  if (!branch) return { SMALL: 0, MEDIUM: 0, LARGE: 0, kennels: [] };
+
+  const kennels = await prisma.kennel.findMany({
+    where: { branchId: branch.id },
+    orderBy: [{ size: "asc" }, { name: "asc" }],
+  });
+
+  const counts = { SMALL: 0, MEDIUM: 0, LARGE: 0 };
+  for (const k of kennels) {
+    if (k.size === "SMALL") counts.SMALL++;
+    else if (k.size === "MEDIUM") counts.MEDIUM++;
+    else if (k.size === "LARGE") counts.LARGE++;
+  }
+
+  return { ...counts, kennels };
+}
+
+export async function upsertGroomingKennels(counts: {
+  SMALL: number;
+  MEDIUM: number;
+  LARGE: number;
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+  });
+  if (!branch) throw new Error("No branch found");
+
+  const sizes = ["SMALL", "MEDIUM", "LARGE"] as const;
+  const prefixes = { SMALL: "S", MEDIUM: "M", LARGE: "L" } as const;
+
+  for (const size of sizes) {
+    const existing = await prisma.kennel.findMany({
+      where: { branchId: branch.id, size },
+      orderBy: { name: "asc" },
+    });
+
+    const target = counts[size];
+    const current = existing.length;
+
+    if (target > current) {
+      const toCreate = [];
+      for (let i = current + 1; i <= target; i++) {
+        toCreate.push({
+          organizationId,
+          branchId: branch.id,
+          name: `${prefixes[size]}-${i}`,
+          size,
+          isAvailable: true,
+        });
+      }
+      await prisma.kennel.createMany({ data: toCreate });
+    } else if (target < current) {
+      const toRemove = existing.slice(target).map((k) => k.id);
+      await prisma.kennel.deleteMany({ where: { id: { in: toRemove } } });
+    }
+  }
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Kennel",
+    entityId: branch.id,
+    metadata: counts,
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
