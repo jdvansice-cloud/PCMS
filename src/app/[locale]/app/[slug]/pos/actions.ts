@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { getItbmsBreakdown } from "@/lib/utils";
-import { incrementBathTally, checkFreeBathEligibility, redeemFreeBath } from "@/lib/grooming";
+
 import { revalidatePath } from "next/cache";
 import type { PaymentMethod, DiscountType } from "@/generated/prisma/client";
 
@@ -497,9 +497,7 @@ export async function createSale(input: {
         where: { id: { in: bathServiceIds }, isBathService: true },
       });
 
-      if (bathServices.length > 0) {
-        await incrementBathTally(organizationId, input.ownerId);
-      }
+      // Bath tally tracking removed — handled by customer promotions system
     }
   }
 
@@ -786,26 +784,3 @@ export async function getOwnerLoyaltyBalance(ownerId: string) {
   return lastEntry ? Number(lastEntry.balanceAfter) : 0;
 }
 
-export async function getFreeBathStatus(ownerId: string) {
-  const { organizationId } = await getCurrentUser();
-  const result = await checkFreeBathEligibility(organizationId, ownerId);
-
-  if (result.eligible) {
-    // Find the cheapest bath-only service to give free
-    const freeBathService = await prisma.service.findFirst({
-      where: { organizationId, isBathOnly: true, isActive: true },
-      orderBy: { price: "asc" },
-      select: { id: true, name: true, price: true, isTaxExempt: true },
-    });
-
-    return { ...result, freeBathService };
-  }
-
-  return { ...result, freeBathService: null };
-}
-
-export async function redeemFreeBathAction(ownerId: string) {
-  const { organizationId } = await getCurrentUser();
-  await redeemFreeBath(organizationId, ownerId);
-  return { success: true };
-}

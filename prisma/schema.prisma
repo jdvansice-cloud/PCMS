@@ -268,9 +268,9 @@ model Organization {
   promotions      Promotion[]
   loyaltyConfig   LoyaltyConfig?
   loyaltyLedger   LoyaltyLedger[]
-  groomingConfig   GroomingConfig?
-  groomingPickups  GroomingPickup[]
-  groomingBathTallies GroomingBathTally[]
+  groomingConfig      GroomingConfig?
+  groomingPickups     GroomingPickup[]
+  customerPromotions  CustomerPromotion[]
 
   @@map("organizations")
 }
@@ -505,8 +505,8 @@ model Owner {
   appointments Appointment[]
   sales        Sale[]
   giftCardsPurchased GiftCard[]
-  loyaltyLedger      LoyaltyLedger[]
-  groomingBathTallies GroomingBathTally[]
+  loyaltyLedger              LoyaltyLedger[]
+  customerPromotionProgress  CustomerPromotionProgress[]
 
   @@index([organizationId])
   @@map("owners")
@@ -572,8 +572,9 @@ model Service {
   saleLines      SaleLine[]
   appointments   Appointment[]
   promotions     PromotionService[]
-  promoTriggers  Promotion[]        @relation("PromoTriggerSvc")
-  promoRewards   Promotion[]        @relation("PromoRewardSvc")
+  promoTriggers           Promotion[]              @relation("PromoTriggerSvc")
+  promoRewards            Promotion[]              @relation("PromoRewardSvc")
+  customerPromotionItems  CustomerPromotionItem[]
 
   @@index([organizationId])
   @@map("services")
@@ -610,8 +611,9 @@ model Product {
   saleLines     SaleLine[]
   poLines       PurchaseOrderLine[]
   promotions    PromotionProduct[]
-  promoTriggers Promotion[]         @relation("PromoTrigger")
-  promoRewards  Promotion[]         @relation("PromoReward")
+  promoTriggers           Promotion[]              @relation("PromoTrigger")
+  promoRewards            Promotion[]              @relation("PromoReward")
+  customerPromotionItems  CustomerPromotionItem[]
 
   @@index([organizationId])
   @@map("products")
@@ -1158,6 +1160,9 @@ model Promotion {
   // Bundle fields
   bundlePrice Decimal? @db.Decimal(10, 2) @map("bundle_price")
 
+  // Online availability
+  availableOnline Boolean @default(false) @map("available_online")
+
   organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   triggerProduct   Product?              @relation("PromoTrigger", fields: [triggerProductId], references: [id])
   triggerService   Service?              @relation("PromoTriggerSvc", fields: [triggerServiceId], references: [id])
@@ -1221,6 +1226,67 @@ model SalePromotion {
   saleLine  SaleLine? @relation(fields: [saleLineId], references: [id])
 
   @@map("sale_promotions")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CUSTOMER PROMOTIONS (loyalty-based, tracks purchase history)
+// ═══════════════════════════════════════════════════════════
+
+enum CustomerPromotionItemRole {
+  QUALIFYING
+  REWARD
+}
+
+model CustomerPromotion {
+  id              String   @id @default(cuid())
+  organizationId  String   @map("organization_id")
+  name            String
+  description     String?
+  threshold       Int
+  isRecurring     Boolean  @default(true) @map("is_recurring")
+  isActive        Boolean  @default(true) @map("is_active")
+  availableOnline Boolean  @default(false) @map("available_online")
+  startsAt        DateTime @map("starts_at")
+  endsAt          DateTime @map("ends_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        CustomerPromotionItem[]
+  progress     CustomerPromotionProgress[]
+
+  @@index([organizationId, isActive])
+  @@map("customer_promotions")
+}
+
+model CustomerPromotionItem {
+  id                  String                    @id @default(cuid())
+  customerPromotionId String                    @map("customer_promotion_id")
+  role                CustomerPromotionItemRole
+  productId           String?                   @map("product_id")
+  serviceId           String?                   @map("service_id")
+
+  customerPromotion CustomerPromotion @relation(fields: [customerPromotionId], references: [id], onDelete: Cascade)
+  product           Product?          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  service           Service?          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("customer_promotion_items")
+}
+
+model CustomerPromotionProgress {
+  id                  String   @id @default(cuid())
+  customerPromotionId String   @map("customer_promotion_id")
+  ownerId             String   @map("owner_id")
+  currentCount        Int      @default(0) @map("current_count")
+  totalEarned         Int      @default(0) @map("total_earned")
+  totalRedeemed       Int      @default(0) @map("total_redeemed")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  customerPromotion CustomerPromotion @relation(fields: [customerPromotionId], references: [id], onDelete: Cascade)
+  owner             Owner             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerPromotionId, ownerId])
+  @@map("customer_promotion_progress")
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1314,8 +1380,6 @@ model GroomingConfig {
   maxAdvanceDays         Int      @default(7) @map("max_advance_days")
   pickupCutoffTime       String   @default("06:00") @map("pickup_cutoff_time")
   receivingCutoffTime    String   @default("14:00") @map("receiving_cutoff_time")
-  freeBathEnabled        Boolean  @default(false) @map("free_bath_enabled")
-  freeBathThreshold      Int      @default(5) @map("free_bath_threshold")
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 
@@ -1349,21 +1413,6 @@ model GroomingPickup {
 
   @@index([branchId, pickupDate])
   @@map("grooming_pickups")
-}
-
-model GroomingBathTally {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
-  ownerId        String   @map("owner_id")
-  totalBaths     Int      @default(0) @map("total_baths")
-  redeemedBaths  Int      @default(0) @map("redeemed_baths")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner        Owner        @relation(fields: [ownerId], references: [id])
-
-  @@unique([organizationId, ownerId])
-  @@map("grooming_bath_tallies")
 }
 
 // ═══════════════════════════════════════════════════════════

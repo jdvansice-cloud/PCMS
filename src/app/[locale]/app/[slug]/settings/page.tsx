@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
-import { Building2, Palette, Users, Shield, Clock, CreditCard, Store, Gift, Tag, Star, Scissors } from "lucide-react";
+import { Building2, Palette, Users, Shield, Clock, CreditCard, Store, Gift, Tag, Star, Scissors, Award } from "lucide-react";
 
 export default async function SettingsPage({
   params,
@@ -23,6 +23,7 @@ export default async function SettingsPage({
     { title: t("billing"), desc: t("billingDesc"), href: `${base}/billing`, icon: CreditCard },
     { title: t("giftCards"), desc: t("giftCardsDesc"), href: `${base}/gift-cards`, icon: Gift },
     { title: t("promotions"), desc: t("promotionsDesc"), href: `${base}/promotions`, icon: Tag },
+    { title: t("customerPromotions"), desc: t("customerPromotionsDesc"), href: `${base}/customer-promotions`, icon: Award },
     { title: t("loyaltyProgram"), desc: t("loyaltyDesc"), href: `${base}/loyalty`, icon: Star },
     { title: t("groomingConfig"), desc: t("groomingConfigDesc"), href: `${base}/grooming`, icon: Scissors },
   ];
