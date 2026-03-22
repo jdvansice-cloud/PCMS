@@ -636,30 +636,36 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
 
               {/* Qualifying items */}
               {posData && !posLoading && (
-                <ItemPicker
-                  products={posData.products}
-                  services={posData.services}
-                  selectedProductIds={formQualifyingProductIds}
-                  selectedServiceIds={formQualifyingServiceIds}
-                  onProductsChange={setFormQualifyingProductIds}
-                  onServicesChange={setFormQualifyingServiceIds}
-                  label={t("custPromoQualifyingLabel")}
-                  t={t}
-                />
+                <div className="space-y-1">
+                  <ItemPicker
+                    products={posData.products}
+                    services={posData.services}
+                    selectedProductIds={formQualifyingProductIds}
+                    selectedServiceIds={formQualifyingServiceIds}
+                    onProductsChange={setFormQualifyingProductIds}
+                    onServicesChange={setFormQualifyingServiceIds}
+                    label={t("custPromoQualifyingLabel")}
+                    t={t}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("custPromoQualifyingHelp")}</p>
+                </div>
               )}
 
               {/* Reward items */}
               {posData && !posLoading && (
-                <ItemPicker
-                  products={posData.products}
-                  services={posData.services}
-                  selectedProductIds={formRewardProductIds}
-                  selectedServiceIds={formRewardServiceIds}
-                  onProductsChange={setFormRewardProductIds}
-                  onServicesChange={setFormRewardServiceIds}
-                  label={t("custPromoRewardLabel")}
-                  t={t}
-                />
+                <div className="space-y-1">
+                  <ItemPicker
+                    products={posData.products}
+                    services={posData.services}
+                    selectedProductIds={formRewardProductIds}
+                    selectedServiceIds={formRewardServiceIds}
+                    onProductsChange={setFormRewardProductIds}
+                    onServicesChange={setFormRewardServiceIds}
+                    label={t("custPromoRewardLabel")}
+                    t={t}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("custPromoRewardHelp")}</p>
+                </div>
               )}
 
               {posLoading && (
