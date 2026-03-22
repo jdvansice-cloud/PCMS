@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Gift } from "lucide-react";
-import Link from "next/link";
+import { Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,13 +59,7 @@ export function LoyaltyClient({ initialConfig, initialTopHolders }: LoyaltyClien
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("loyaltyTitle")}>
-        <Link href={`/app/${organization.slug}/settings`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={t("loyaltyTitle")} backHref={`/app/${organization.slug}/settings`} />
 
       {/* Configuration Card */}
       <Card>

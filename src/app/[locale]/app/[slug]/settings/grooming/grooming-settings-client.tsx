@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Scissors } from "lucide-react";
-import Link from "next/link";
+import { Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,13 +71,7 @@ export function GroomingSettingsClient({ initialConfig, initialKennels }: Props)
 
   return (
     <div className="space-y-6">
-      <PageHeader title={tg("title")}>
-        <Link href={`/app/${organization.slug}/settings`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={tg("title")} backHref={`/app/${organization.slug}/settings`} />
 
       {/* Online Booking */}
       <Card>

@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +20,7 @@ export default function NewClientPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("newClient")}>
-        <Link href={base}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={t("newClient")} backHref={base} />
 
       <Card>
         <CardContent className="p-4 sm:p-6">
