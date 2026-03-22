@@ -184,7 +184,11 @@
       "FOLLOW_UP": "Seguimiento",
       "EMERGENCY": "Emergencia",
       "OTHER": "Otro"
-    }
+    },
+    "selectClient": "Seleccionar cliente",
+    "selectPet": "Seleccionar mascota",
+    "selectVet": "Asignar después",
+    "selectService": "Seleccionar servicio"
   },
   "pos": {
     "title": "Punto de Venta",

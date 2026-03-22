@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,8 @@ type FormData = {
 };
 
 export function AppointmentForm({ data, slug }: { data: FormData; slug: string }) {
+  const t = useTranslations("appointments");
+  const tc = useTranslations("common");
   const base = `/app/${slug}/appointments`;
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
@@ -40,10 +43,10 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Nueva Cita">
+      <PageHeader title={t("newAppointment")}>
         <Link href={base}>
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
           </Button>
         </Link>
       </PageHeader>
@@ -53,7 +56,7 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
           <form action={createAppointment} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Cliente *</Label>
+                <Label>{t("client")} *</Label>
                 <Select
                   name="ownerId"
                   value={selectedOwnerId}
@@ -61,7 +64,7 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
+                    <SelectValue placeholder={t("selectClient")} />
                   </SelectTrigger>
                   <SelectContent>
                     {data.owners.map((o) => (
@@ -73,10 +76,10 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Mascota *</Label>
+                <Label>{t("pet")} *</Label>
                 <Select name="petId" required disabled={!selectedOwnerId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar mascota" />
+                    <SelectValue placeholder={t("selectPet")} />
                   </SelectTrigger>
                   <SelectContent>
                     {selectedOwner?.pets.map((p) => (
@@ -88,10 +91,10 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Veterinario</Label>
+                <Label>{t("vet")}</Label>
                 <Select name="vetId">
                   <SelectTrigger>
-                    <SelectValue placeholder="Asignar después" />
+                    <SelectValue placeholder={t("selectVet")} />
                   </SelectTrigger>
                   <SelectContent>
                     {data.vets.map((v) => (
@@ -103,14 +106,14 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Servicio</Label>
+                <Label>{t("service")}</Label>
                 <Select
                   name="serviceId"
                   value={selectedServiceId}
                   onValueChange={(v) => setSelectedServiceId(v ?? "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar servicio" />
+                    <SelectValue placeholder={t("selectService")} />
                   </SelectTrigger>
                   <SelectContent>
                     {data.services.map((s) => (
@@ -122,28 +125,28 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo *</Label>
+                <Label>{t("type")} *</Label>
                 <Select name="type" defaultValue={selectedService?.type ?? "CONSULTATION"}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CONSULTATION">Consulta</SelectItem>
-                    <SelectItem value="VACCINATION">Vacunación</SelectItem>
-                    <SelectItem value="SURGERY">Cirugía</SelectItem>
-                    <SelectItem value="GROOMING">Peluquería</SelectItem>
-                    <SelectItem value="FOLLOW_UP">Seguimiento</SelectItem>
-                    <SelectItem value="EMERGENCY">Emergencia</SelectItem>
-                    <SelectItem value="OTHER">Otro</SelectItem>
+                    <SelectItem value="CONSULTATION">{t("typeLabels.CONSULTATION")}</SelectItem>
+                    <SelectItem value="VACCINATION">{t("typeLabels.VACCINATION")}</SelectItem>
+                    <SelectItem value="SURGERY">{t("typeLabels.SURGERY")}</SelectItem>
+                    <SelectItem value="GROOMING">{t("typeLabels.GROOMING")}</SelectItem>
+                    <SelectItem value="FOLLOW_UP">{t("typeLabels.FOLLOW_UP")}</SelectItem>
+                    <SelectItem value="EMERGENCY">{t("typeLabels.EMERGENCY")}</SelectItem>
+                    <SelectItem value="OTHER">{t("typeLabels.OTHER")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha y hora *</Label>
+                <Label>{t("scheduledAt")} *</Label>
                 <Input name="scheduledAt" type="datetime-local" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Duración (min)</Label>
+                <Label>{t("duration")}</Label>
                 <Input
                   name="durationMin"
                   type="number"
@@ -152,20 +155,20 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Motivo</Label>
+              <Label>{t("reason")}</Label>
               <Textarea name="reason" rows={2} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>{tc("notes")}</Label>
               <Textarea name="notes" rows={2} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Link href={base}>
                 <Button type="button" variant="outline">
-                  Cancelar
+                  {tc("cancel")}
                 </Button>
               </Link>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{tc("save")}</Button>
             </div>
           </form>
         </CardContent>
