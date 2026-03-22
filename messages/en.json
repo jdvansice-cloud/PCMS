@@ -688,6 +688,8 @@
     "saveCages": "Save Cages"
   },
   "grooming": {
+    "title": "Grooming Board",
+    "description": "Manage grooming sessions, cages, and groomers",
     "board": "Grooming Board",
     "pending": "Pending",
     "inProgress": "In Progress",
@@ -698,12 +700,21 @@
     "assignGroomer": "Assign Groomer",
     "cageOccupancy": "Cage Occupancy",
     "noCage": "No cage",
+    "noCages": "No cages configured",
     "noGroomer": "No groomer",
+    "pickup": "Pickup/Delivery",
     "pickupRequested": "Pickup Requested",
     "noSessions": "No grooming sessions for this day",
     "noSessionsDesc": "Grooming appointments will appear here",
     "createSession": "New Grooming Session",
     "petSize": "Pet Size",
+    "owner": "Owner",
+    "groomer": "Groomer",
+    "selectGroomer": "Select groomer",
+    "cage": "Cage",
+    "selectCage": "Select cage",
+    "empty": "Empty",
+    "notes": "Notes",
     "services": "Services",
     "specialInstructions": "Special Instructions",
     "skinCondition": "Skin Condition",
@@ -715,6 +726,16 @@
     "deliveryTime": "Delivery Time",
     "routeOptimized": "Route optimized",
     "noPickups": "No pickups for this day",
+    "status": {
+      "PENDING": "Pending",
+      "IN_PROGRESS": "In Progress",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    },
+    "moveTo": {
+      "IN_PROGRESS": "Start Grooming",
+      "COMPLETED": "Mark Completed"
+    },
     "statusLabels": {
       "REQUESTED": "Requested",
       "CONFIRMED": "Confirmed",

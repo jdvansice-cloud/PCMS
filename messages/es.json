@@ -689,6 +689,8 @@
     "saveCages": "Guardar Jaulas"
   },
   "grooming": {
+    "title": "Tablero de Peluquería",
+    "description": "Gestiona sesiones de peluquería, jaulas y peluqueros",
     "board": "Tablero de Peluquería",
     "pending": "Pendientes",
     "inProgress": "En Progreso",
@@ -699,12 +701,21 @@
     "assignGroomer": "Asignar Peluquero",
     "cageOccupancy": "Ocupación de Jaulas",
     "noCage": "Sin jaula",
+    "noCages": "No hay jaulas configuradas",
     "noGroomer": "Sin peluquero",
+    "pickup": "Recogida/Entrega",
     "pickupRequested": "Recogida Solicitada",
     "noSessions": "No hay sesiones de peluquería para este día",
     "noSessionsDesc": "Las citas de peluquería aparecerán aquí",
     "createSession": "Nueva Sesión de Peluquería",
     "petSize": "Tamaño de Mascota",
+    "owner": "Dueño",
+    "groomer": "Peluquero",
+    "selectGroomer": "Seleccionar peluquero",
+    "cage": "Jaula",
+    "selectCage": "Seleccionar jaula",
+    "empty": "Vacía",
+    "notes": "Notas",
     "services": "Servicios",
     "specialInstructions": "Instrucciones Especiales",
     "skinCondition": "Condición de Piel",
@@ -716,6 +727,16 @@
     "deliveryTime": "Hora de Entrega",
     "routeOptimized": "Ruta optimizada",
     "noPickups": "No hay recogidas para este día",
+    "status": {
+      "PENDING": "Pendiente",
+      "IN_PROGRESS": "En Progreso",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Cancelado"
+    },
+    "moveTo": {
+      "IN_PROGRESS": "Iniciar Peluquería",
+      "COMPLETED": "Marcar Completado"
+    },
     "statusLabels": {
       "REQUESTED": "Solicitada",
       "CONFIRMED": "Confirmada",
