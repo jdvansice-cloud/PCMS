@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { getItbmsBreakdown } from "@/lib/utils";
+import { incrementBathTally, checkFreeBathEligibility, redeemFreeBath } from "@/lib/grooming";
 import { revalidatePath } from "next/cache";
 import type { PaymentMethod, DiscountType } from "@/generated/prisma/client";
 
@@ -58,6 +59,7 @@ type CartItem = {
 
 export async function createSale(input: {
   ownerId?: string;
+  appointmentId?: string;
   items: CartItem[];
   paymentMethod?: PaymentMethod;
   payments?: {
@@ -210,12 +212,23 @@ export async function createSale(input: {
 
   // --- g. Execute in transaction for atomicity ---
   const result = await prisma.$transaction(async (tx) => {
+    // Check if this sale is linked to an online booking
+    let isOnlineSale = false;
+    if (input.appointmentId) {
+      const appointment = await tx.appointment.findUnique({
+        where: { id: input.appointmentId },
+        select: { isPublicBooking: true },
+      });
+      isOnlineSale = appointment?.isPublicBooking ?? false;
+    }
+
     // Create the sale
     const sale = await tx.sale.create({
       data: {
         organizationId,
         branchId: branch.id,
         ownerId: input.ownerId || null,
+        appointmentId: input.appointmentId || null,
         saleNumber,
         subtotal: subtotalSum,
         itbms: itbmsSum,
@@ -225,6 +238,7 @@ export async function createSale(input: {
         total,
         balanceDue: 0,
         status: "COMPLETED",
+        isOnlineSale,
         notes: input.notes || null,
         lines: { create: lines },
       },
@@ -450,8 +464,44 @@ export async function createSale(input: {
       }
     }
 
-    return { saleId: sale.id, saleNumber, generatedGiftCards };
+    // --- Bath tally for online grooming sales ---
+    if (isOnlineSale && input.ownerId) {
+      // Check if any items are bath services
+      const bathServiceIds = input.items
+        .filter((item) => item.serviceId)
+        .map((item) => item.serviceId!);
+
+      if (bathServiceIds.length > 0) {
+        const bathServices = await tx.service.findMany({
+          where: { id: { in: bathServiceIds }, isBathService: true },
+        });
+
+        if (bathServices.length > 0) {
+          // Increment bath tally (outside transaction - handled by grooming lib)
+          // We'll do this after the transaction
+        }
+      }
+    }
+
+    return { saleId: sale.id, saleNumber, generatedGiftCards, isOnlineSale };
   });
+
+  // Increment bath tally for online grooming sales
+  if (result.isOnlineSale && input.ownerId) {
+    const bathServiceIds = input.items
+      .filter((item) => item.serviceId)
+      .map((item) => item.serviceId!);
+
+    if (bathServiceIds.length > 0) {
+      const bathServices = await prisma.service.findMany({
+        where: { id: { in: bathServiceIds }, isBathService: true },
+      });
+
+      if (bathServices.length > 0) {
+        await incrementBathTally(organizationId, input.ownerId);
+      }
+    }
+  }
 
   await createAuditLog({
     organizationId,
@@ -464,6 +514,7 @@ export async function createSale(input: {
       total,
       discounts: totalAllDiscounts,
       promotions: promotionDiscountMap.length,
+      isOnlineSale: result.isOnlineSale,
     },
   });
 
@@ -733,4 +784,28 @@ export async function getOwnerLoyaltyBalance(ownerId: string) {
   });
 
   return lastEntry ? Number(lastEntry.balanceAfter) : 0;
+}
+
+export async function getFreeBathStatus(ownerId: string) {
+  const { organizationId } = await getCurrentUser();
+  const result = await checkFreeBathEligibility(organizationId, ownerId);
+
+  if (result.eligible) {
+    // Find the cheapest bath-only service to give free
+    const freeBathService = await prisma.service.findFirst({
+      where: { organizationId, isBathOnly: true, isActive: true },
+      orderBy: { price: "asc" },
+      select: { id: true, name: true, price: true, isTaxExempt: true },
+    });
+
+    return { ...result, freeBathService };
+  }
+
+  return { ...result, freeBathService: null };
+}
+
+export async function redeemFreeBathAction(ownerId: string) {
+  const { organizationId } = await getCurrentUser();
+  await redeemFreeBath(organizationId, ownerId);
+  return { success: true };
 }

@@ -193,6 +193,16 @@ enum AuditAction {
   RESTORE
 }
 
+enum PickupStatus {
+  REQUESTED
+  CONFIRMED
+  EN_ROUTE_PICKUP
+  EN_ROUTE_DELIVERY
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
 // ═══════════════════════════════════════════════════════════
 //  PLATFORM (Super Admin)
 // ═══════════════════════════════════════════════════════════
@@ -258,6 +268,9 @@ model Organization {
   promotions      Promotion[]
   loyaltyConfig   LoyaltyConfig?
   loyaltyLedger   LoyaltyLedger[]
+  groomingConfig   GroomingConfig?
+  groomingPickups  GroomingPickup[]
+  groomingBathTallies GroomingBathTally[]
 
   @@map("organizations")
 }
@@ -328,6 +341,7 @@ model Branch {
   kennels        Kennel[]
   kennelStays    KennelStay[]
   userBranches   UserBranch[]
+  groomingPickups GroomingPickup[]
 
   @@map("branches")
 }
@@ -492,6 +506,7 @@ model Owner {
   sales        Sale[]
   giftCardsPurchased GiftCard[]
   loyaltyLedger      LoyaltyLedger[]
+  groomingBathTallies GroomingBathTally[]
 
   @@index([organizationId])
   @@map("owners")
@@ -548,6 +563,8 @@ model Service {
   durationMin    Int             @default(30) @map("duration_min")
   isBookable     Boolean         @default(true) @map("is_bookable")
   isActive       Boolean         @default(true) @map("is_active")
+  isBathService  Boolean         @default(false) @map("is_bath_service")
+  isBathOnly     Boolean         @default(false) @map("is_bath_only")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
@@ -687,6 +704,9 @@ model Appointment {
   vet           User?          @relation("AppointmentVet", fields: [vetId], references: [id])
   service       Service?       @relation(fields: [serviceId], references: [id])
   medicalRecord MedicalRecord?
+  groomingSession GroomingSession?
+  groomingPickup  GroomingPickup?
+  sale            Sale?
 
   @@index([organizationId, scheduledAt])
   @@index([branchId, scheduledAt])
@@ -850,12 +870,16 @@ model GroomingSession {
   organizationId      String         @map("organization_id")
   branchId            String         @map("branch_id")
   petId               String         @map("pet_id")
-  groomerId           String         @map("groomer_id")
-  appointmentId       String?        @map("appointment_id")
+  groomerId           String?        @map("groomer_id")
+  appointmentId       String?        @unique @map("appointment_id")
+  kennelId            String?        @map("kennel_id")
   status              GroomingStatus @default(PENDING)
   scheduledAt         DateTime       @map("scheduled_at")
   startedAt           DateTime?      @map("started_at")
   completedAt         DateTime?      @map("completed_at")
+  kennelAssignedAt    DateTime?      @map("kennel_assigned_at")
+  kennelReleasedAt    DateTime?      @map("kennel_released_at")
+  petSize             KennelSize?    @map("pet_size")
   services            String[]
   skinCondition       String?        @map("skin_condition")
   matting             String?
@@ -869,7 +893,9 @@ model GroomingSession {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch       Branch       @relation(fields: [branchId], references: [id])
   pet          Pet          @relation(fields: [petId], references: [id])
-  groomer      User         @relation("GroomingGroomer", fields: [groomerId], references: [id])
+  groomer      User?        @relation("GroomingGroomer", fields: [groomerId], references: [id])
+  appointment  Appointment? @relation(fields: [appointmentId], references: [id])
+  kennel       Kennel?      @relation(fields: [kennelId], references: [id])
 
   @@index([organizationId])
   @@index([branchId, scheduledAt])
@@ -893,6 +919,7 @@ model Kennel {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch       Branch       @relation(fields: [branchId], references: [id])
   stays        KennelStay[]
+  groomingSessions GroomingSession[]
 
   @@map("kennels")
 }
@@ -951,6 +978,7 @@ model Sale {
   organizationId String        @map("organization_id")
   branchId       String        @map("branch_id")
   ownerId        String?       @map("owner_id")
+  appointmentId  String?       @unique @map("appointment_id")
   saleNumber     Int           @map("sale_number")
   subtotal       Decimal       @db.Decimal(10, 2)
   itbms          Decimal       @db.Decimal(10, 2)
@@ -960,6 +988,7 @@ model Sale {
   total          Decimal       @db.Decimal(10, 2)
   balanceDue     Decimal       @default(0) @db.Decimal(10, 2) @map("balance_due")
   status         SaleStatus    @default(COMPLETED)
+  isOnlineSale   Boolean       @default(false) @map("is_online_sale")
   notes          String?
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
@@ -967,6 +996,7 @@ model Sale {
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch       Branch        @relation(fields: [branchId], references: [id])
   owner        Owner?        @relation(fields: [ownerId], references: [id])
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
   discountedBy User?         @relation("SaleDiscounter", fields: [discountedById], references: [id])
   lines        SaleLine[]
   payments     SalePayment[]
@@ -1271,6 +1301,69 @@ model EmailLog {
 
   @@index([organizationId, createdAt])
   @@map("email_logs")
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GROOMING CONFIG & BOOKING
+// ═══════════════════════════════════════════════════════════
+
+model GroomingConfig {
+  id                     String   @id @default(cuid())
+  organizationId         String   @unique @map("organization_id")
+  isOnlineBookingEnabled Boolean  @default(true) @map("is_online_booking_enabled")
+  maxAdvanceDays         Int      @default(7) @map("max_advance_days")
+  pickupCutoffTime       String   @default("06:00") @map("pickup_cutoff_time")
+  receivingCutoffTime    String   @default("14:00") @map("receiving_cutoff_time")
+  freeBathEnabled        Boolean  @default(false) @map("free_bath_enabled")
+  freeBathThreshold      Int      @default(5) @map("free_bath_threshold")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("grooming_config")
+}
+
+model GroomingPickup {
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  branchId       String       @map("branch_id")
+  appointmentId  String       @unique @map("appointment_id")
+  address        String
+  latitude       Decimal?     @db.Decimal(10, 7)
+  longitude      Decimal?     @db.Decimal(10, 7)
+  status         PickupStatus @default(REQUESTED)
+  pickupTime     String?      @map("pickup_time")
+  pickupDate     DateTime     @map("pickup_date")
+  pickedUpAt     DateTime?    @map("picked_up_at")
+  deliveryTime   String?      @map("delivery_time")
+  deliveredAt    DateTime?    @map("delivered_at")
+  routeOrder     Int?         @map("route_order")
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  appointment  Appointment  @relation(fields: [appointmentId], references: [id])
+
+  @@index([branchId, pickupDate])
+  @@map("grooming_pickups")
+}
+
+model GroomingBathTally {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  ownerId        String   @map("owner_id")
+  totalBaths     Int      @default(0) @map("total_baths")
+  redeemedBaths  Int      @default(0) @map("redeemed_baths")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        Owner        @relation(fields: [ownerId], references: [id])
+
+  @@unique([organizationId, ownerId])
+  @@map("grooming_bath_tallies")
 }
 
 // ═══════════════════════════════════════════════════════════
