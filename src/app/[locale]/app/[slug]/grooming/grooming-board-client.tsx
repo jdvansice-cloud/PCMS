@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   getGroomingBoard,
@@ -127,12 +127,14 @@ export function GroomingBoardClient({
   };
 
   // -- Initial occupancy load -----------------------------------------------
-  if (kennelOccupancy === null) {
-    startTransition(async () => {
-      const occ = await getKennelOccupancy(date);
-      setKennelOccupancy(occ);
-    });
-  }
+  useEffect(() => {
+    if (kennelOccupancy === null) {
+      startTransition(async () => {
+        const occ = await getKennelOccupancy(date);
+        setKennelOccupancy(occ);
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Group sessions by status ---------------------------------------------
   const grouped: Record<string, Session[]> = {
