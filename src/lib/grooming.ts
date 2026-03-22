@@ -114,63 +114,6 @@ export async function findNextAvailableDate(
   return null;
 }
 
-/**
- * Check if an owner is eligible for a free bath.
- */
-export async function checkFreeBathEligibility(
-  organizationId: string,
-  ownerId: string,
-) {
-  const config = await prisma.groomingConfig.findUnique({
-    where: { organizationId },
-  });
-
-  if (!config?.freeBathEnabled) return { eligible: false, bathsUntilNext: 0, totalBaths: 0 };
-
-  const tally = await prisma.groomingBathTally.findUnique({
-    where: { organizationId_ownerId: { organizationId, ownerId } },
-  });
-
-  const totalBaths = tally?.totalBaths ?? 0;
-  const redeemedBaths = tally?.redeemedBaths ?? 0;
-  const totalFreeEarned = Math.floor(totalBaths / config.freeBathThreshold);
-  const unredeemed = totalFreeEarned - redeemedBaths;
-  const bathsUntilNext = config.freeBathThreshold - (totalBaths % config.freeBathThreshold);
-
-  return {
-    eligible: unredeemed > 0,
-    bathsUntilNext,
-    totalBaths,
-    unredeemed,
-  };
-}
-
-/**
- * Increment the bath tally for an owner after a grooming sale.
- */
-export async function incrementBathTally(
-  organizationId: string,
-  ownerId: string,
-) {
-  return prisma.groomingBathTally.upsert({
-    where: { organizationId_ownerId: { organizationId, ownerId } },
-    create: { organizationId, ownerId, totalBaths: 1, redeemedBaths: 0 },
-    update: { totalBaths: { increment: 1 } },
-  });
-}
-
-/**
- * Redeem a free bath for an owner.
- */
-export async function redeemFreeBath(
-  organizationId: string,
-  ownerId: string,
-) {
-  return prisma.groomingBathTally.update({
-    where: { organizationId_ownerId: { organizationId, ownerId } },
-    data: { redeemedBaths: { increment: 1 } },
-  });
-}
 
 /**
  * Nearest-neighbor route optimization using haversine distance.

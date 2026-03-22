@@ -1081,6 +1081,7 @@ export async function createPromotion(input: {
   endsAt: string;
   isActive: boolean;
   appliesToAll: boolean;
+  availableOnline?: boolean;
   productIds?: string[];
   serviceIds?: string[];
   // Buy X Get Y
@@ -1111,6 +1112,7 @@ export async function createPromotion(input: {
       endsAt: new Date(input.endsAt),
       isActive: input.isActive,
       appliesToAll: input.appliesToAll,
+      availableOnline: input.availableOnline ?? false,
       // Buy X Get Y fields
       triggerProductId: input.triggerProductId ?? null,
       triggerServiceId: input.triggerServiceId ?? null,
@@ -1179,6 +1181,7 @@ export async function updatePromotion(
     endsAt: string;
     isActive: boolean;
     appliesToAll: boolean;
+    availableOnline?: boolean;
     productIds?: string[];
     serviceIds?: string[];
     triggerProductId?: string;
@@ -1217,6 +1220,7 @@ export async function updatePromotion(
         endsAt: new Date(input.endsAt),
         isActive: input.isActive,
         appliesToAll: input.appliesToAll,
+        availableOnline: input.availableOnline ?? false,
         triggerProductId: input.triggerProductId ?? null,
         triggerServiceId: input.triggerServiceId ?? null,
         rewardProductId: input.rewardProductId ?? null,
@@ -1316,8 +1320,6 @@ export async function updateGroomingConfig(data: {
   maxAdvanceDays: number;
   pickupCutoffTime: string;
   receivingCutoffTime: string;
-  freeBathEnabled: boolean;
-  freeBathThreshold: number;
 }) {
   const { user, organizationId, slug } = await getCurrentUser();
 
@@ -1332,8 +1334,6 @@ export async function updateGroomingConfig(data: {
       maxAdvanceDays: data.maxAdvanceDays,
       pickupCutoffTime: data.pickupCutoffTime,
       receivingCutoffTime: data.receivingCutoffTime,
-      freeBathEnabled: data.freeBathEnabled,
-      freeBathThreshold: data.freeBathThreshold,
     },
     create: {
       organizationId,
@@ -1341,8 +1341,6 @@ export async function updateGroomingConfig(data: {
       maxAdvanceDays: data.maxAdvanceDays,
       pickupCutoffTime: data.pickupCutoffTime,
       receivingCutoffTime: data.receivingCutoffTime,
-      freeBathEnabled: data.freeBathEnabled,
-      freeBathThreshold: data.freeBathThreshold,
     },
   });
 
@@ -1445,5 +1443,201 @@ export async function upsertGroomingKennels(counts: {
   });
 
   revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CUSTOMER PROMOTIONS
+// ═══════════════════════════════════════════════════════════
+
+const CUST_PROMO_PAGE_SIZE = 20;
+
+export async function getCustomerPromotions(search?: string, page = 1) {
+  const { organizationId } = await getCurrentUser();
+
+  const where = {
+    organizationId,
+    ...(search
+      ? { name: { contains: search, mode: "insensitive" as const } }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.customerPromotion.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            product: { select: { id: true, name: true, price: true } },
+            service: { select: { id: true, name: true, price: true } },
+          },
+        },
+        _count: { select: { progress: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * CUST_PROMO_PAGE_SIZE,
+      take: CUST_PROMO_PAGE_SIZE,
+    }),
+    prisma.customerPromotion.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize: CUST_PROMO_PAGE_SIZE, totalPages: Math.ceil(total / CUST_PROMO_PAGE_SIZE) };
+}
+
+export async function getCustomerPromotion(id: string) {
+  const { organizationId } = await getCurrentUser();
+
+  return prisma.customerPromotion.findFirst({
+    where: { id, organizationId },
+    include: {
+      items: {
+        include: {
+          product: { select: { id: true, name: true, price: true } },
+          service: { select: { id: true, name: true, price: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function createCustomerPromotion(input: {
+  name: string;
+  description?: string;
+  threshold: number;
+  isRecurring: boolean;
+  availableOnline: boolean;
+  startsAt: string;
+  endsAt: string;
+  qualifyingProductIds: string[];
+  qualifyingServiceIds: string[];
+  rewardProductIds: string[];
+  rewardServiceIds: string[];
+}) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const items = [
+    ...input.qualifyingProductIds.map((productId) => ({ role: "QUALIFYING" as const, productId, serviceId: null })),
+    ...input.qualifyingServiceIds.map((serviceId) => ({ role: "QUALIFYING" as const, productId: null, serviceId })),
+    ...input.rewardProductIds.map((productId) => ({ role: "REWARD" as const, productId, serviceId: null })),
+    ...input.rewardServiceIds.map((serviceId) => ({ role: "REWARD" as const, productId: null, serviceId })),
+  ];
+
+  const promo = await prisma.customerPromotion.create({
+    data: {
+      organizationId,
+      name: input.name,
+      description: input.description ?? null,
+      threshold: input.threshold,
+      isRecurring: input.isRecurring,
+      availableOnline: input.availableOnline,
+      startsAt: new Date(input.startsAt),
+      endsAt: new Date(input.endsAt),
+      items: {
+        create: items,
+      },
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "CustomerPromotion",
+    entityId: promo.id,
+    metadata: { name: input.name, threshold: input.threshold },
+  });
+
+  revalidatePath(`/app/${slug}/settings/customer-promotions`);
+  return { success: true, promotion: promo };
+}
+
+export async function updateCustomerPromotion(
+  id: string,
+  input: {
+    name: string;
+    description?: string;
+    threshold: number;
+    isRecurring: boolean;
+    availableOnline: boolean;
+    startsAt: string;
+    endsAt: string;
+    qualifyingProductIds: string[];
+    qualifyingServiceIds: string[];
+    rewardProductIds: string[];
+    rewardServiceIds: string[];
+  },
+) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const existing = await prisma.customerPromotion.findFirst({
+    where: { id, organizationId },
+  });
+  if (!existing) throw new Error("Customer promotion not found");
+
+  const items = [
+    ...input.qualifyingProductIds.map((productId) => ({ role: "QUALIFYING" as const, productId, serviceId: null })),
+    ...input.qualifyingServiceIds.map((serviceId) => ({ role: "QUALIFYING" as const, productId: null, serviceId })),
+    ...input.rewardProductIds.map((productId) => ({ role: "REWARD" as const, productId, serviceId: null })),
+    ...input.rewardServiceIds.map((serviceId) => ({ role: "REWARD" as const, productId: null, serviceId })),
+  ];
+
+  await prisma.$transaction([
+    prisma.customerPromotionItem.deleteMany({ where: { customerPromotionId: id } }),
+    prisma.customerPromotion.update({
+      where: { id },
+      data: {
+        name: input.name,
+        description: input.description ?? null,
+        threshold: input.threshold,
+        isRecurring: input.isRecurring,
+        availableOnline: input.availableOnline,
+        startsAt: new Date(input.startsAt),
+        endsAt: new Date(input.endsAt),
+      },
+    }),
+    ...(items.length > 0
+      ? [prisma.customerPromotionItem.createMany({
+          data: items.map((item) => ({ customerPromotionId: id, ...item })),
+        })]
+      : []),
+  ]);
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "CustomerPromotion",
+    entityId: id,
+    metadata: { name: input.name },
+  });
+
+  revalidatePath(`/app/${slug}/settings/customer-promotions`);
+  return { success: true };
+}
+
+export async function toggleCustomerPromotion(id: string) {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  const promo = await prisma.customerPromotion.findFirst({
+    where: { id, organizationId },
+  });
+  if (!promo) throw new Error("Customer promotion not found");
+
+  const newState = !promo.isActive;
+  await prisma.customerPromotion.update({
+    where: { id },
+    data: { isActive: newState },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "CustomerPromotion",
+    entityId: id,
+    metadata: { name: promo.name, isActive: newState },
+  });
+
+  revalidatePath(`/app/${slug}/settings/customer-promotions`);
   return { success: true };
 }

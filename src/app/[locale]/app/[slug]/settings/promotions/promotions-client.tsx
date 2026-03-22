@@ -18,6 +18,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -382,6 +383,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
   const [formPerCustomerLimit, setFormPerCustomerLimit] = useState("");
   const [formStartsAt, setFormStartsAt] = useState("");
   const [formEndsAt, setFormEndsAt] = useState("");
+  const [formAvailableOnline, setFormAvailableOnline] = useState(false);
   const [formProductIds, setFormProductIds] = useState<string[]>([]);
   const [formServiceIds, setFormServiceIds] = useState<string[]>([]);
 
@@ -438,6 +440,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
     setFormPerCustomerLimit("");
     setFormStartsAt("");
     setFormEndsAt("");
+    setFormAvailableOnline(false);
     setFormProductIds([]);
     setFormServiceIds([]);
     setFormTriggerProductId(null);
@@ -474,6 +477,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
       setFormPerCustomerLimit(full.perCustomerLimit != null ? String(full.perCustomerLimit) : "");
       setFormStartsAt(toDateInputValue(full.startsAt));
       setFormEndsAt(toDateInputValue(full.endsAt));
+      setFormAvailableOnline(full.availableOnline);
       setFormProductIds(full.includedProducts.map((p) => p.productId));
       setFormServiceIds(full.includedServices.map((s) => s.serviceId));
       // Buy X Get Y
@@ -530,6 +534,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
         endsAt: formEndsAt,
         isActive: true,
         appliesToAll: !needsItems && !isBuyXGetY,
+        availableOnline: formAvailableOnline,
         productIds: needsItems ? formProductIds : undefined,
         serviceIds: needsItems ? formServiceIds : undefined,
         // Buy X Get Y
@@ -702,6 +707,11 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {typeBadge(promo.type)}
                         {statusBadge(promo)}
+                        {promo.availableOnline && (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            {t("promoOnlineBadge")}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatValue(promo)} &middot; {formatDateRange(promo)}
@@ -742,7 +752,16 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                     <TableCell>{typeBadge(promo.type)}</TableCell>
                     <TableCell>{formatValue(promo)}</TableCell>
                     <TableCell className="text-xs">{formatDateRange(promo)}</TableCell>
-                    <TableCell>{statusBadge(promo)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {statusBadge(promo)}
+                        {promo.availableOnline && (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            {t("promoOnlineBadge")}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{usageDisplay(promo)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -1017,6 +1036,18 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                   <Label>{t("promoEndDate")} *</Label>
                   <Input type="date" required value={formEndsAt} onChange={(e) => setFormEndsAt(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Available Online */}
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                  id="available-online"
+                  checked={formAvailableOnline}
+                  onCheckedChange={(checked) => setFormAvailableOnline(checked === true)}
+                />
+                <Label htmlFor="available-online" className="text-sm font-normal cursor-pointer">
+                  {t("promoAvailableOnline")}
+                </Label>
               </div>
             </div>
 

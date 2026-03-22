@@ -39,8 +39,6 @@ export function GroomingSettingsClient({ initialConfig, initialKennels }: Props)
     maxAdvanceDays: initialConfig.maxAdvanceDays,
     pickupCutoffTime: initialConfig.pickupCutoffTime,
     receivingCutoffTime: initialConfig.receivingCutoffTime,
-    freeBathEnabled: initialConfig.freeBathEnabled,
-    freeBathThreshold: initialConfig.freeBathThreshold,
   });
 
   const [kennels, setKennels] = useState({
@@ -153,47 +151,6 @@ export function GroomingSettingsClient({ initialConfig, initialKennels }: Props)
               <p className="text-xs text-muted-foreground">{tg("receivingCutoffHelp")}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Free Bath Promotion */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{tg("freeBathPromo")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="free-bath">{tg("enableFreeBath")}</Label>
-              <p className="text-xs text-muted-foreground">{tg("freeBathHelp")}</p>
-            </div>
-            <Switch
-              id="free-bath"
-              checked={config.freeBathEnabled}
-              onCheckedChange={(checked: boolean) =>
-                setConfig((c) => ({ ...c, freeBathEnabled: checked }))
-              }
-            />
-          </div>
-
-          {config.freeBathEnabled && (
-            <div className="space-y-1.5 max-w-xs">
-              <Label htmlFor="bath-threshold">{tg("freeBathThreshold")}</Label>
-              <Input
-                id="bath-threshold"
-                type="number"
-                min={2}
-                max={50}
-                value={config.freeBathThreshold}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, freeBathThreshold: parseInt(e.target.value) || 5 }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                {tg("freeBathThresholdHelp", { count: config.freeBathThreshold })}
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
