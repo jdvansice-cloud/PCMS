@@ -3,8 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Store, Pencil, Users, Star } from "lucide-react";
-import Link from "next/link";
+import { Plus, Store, Pencil, Users, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -233,13 +232,7 @@ export function BranchesClient({ initialBranches }: BranchesClientProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("branchesTitle")}>
-        <div className="flex items-center gap-2">
-          <Link href={`/app/${organization.slug}/settings`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
-            </Button>
-          </Link>
+      <PageHeader title={t("branchesTitle")} backHref={`/app/${organization.slug}/settings`}>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger
               render={<Button size="sm" className="gap-1.5" />}
@@ -254,7 +247,6 @@ export function BranchesClient({ initialBranches }: BranchesClientProps) {
               {branchForm(null, handleCreate, creating)}
             </DialogContent>
           </Dialog>
-        </div>
       </PageHeader>
 
       {branches.length === 0 ? (

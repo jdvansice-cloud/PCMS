@@ -3,8 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Users, UserX } from "lucide-react";
-import Link from "next/link";
+import { Plus, Users, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,13 +127,7 @@ export function UsersClient({ initialUsers, initialRoles }: UsersClientProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("usersTitle")}>
-        <div className="flex items-center gap-2">
-          <Link href={`/app/${organization.slug}/settings`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
-            </Button>
-          </Link>
+      <PageHeader title={t("usersTitle")} backHref={`/app/${organization.slug}/settings`}>
           <Dialog open={showInvite} onOpenChange={setShowInvite}>
             <DialogTrigger
               render={
@@ -221,7 +214,6 @@ export function UsersClient({ initialUsers, initialRoles }: UsersClientProps) {
               </form>
             </DialogContent>
           </Dialog>
-        </div>
       </PageHeader>
 
       {users.length === 0 ? (

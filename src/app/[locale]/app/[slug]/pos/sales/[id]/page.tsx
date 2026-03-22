@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Receipt, Tag, Gift, Star } from "lucide-react";
+import { Receipt, Tag, Gift, Star } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -38,13 +36,7 @@ export default async function SaleDetailPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`${t("saleDetail")} #${sale.saleNumber}`}>
-        <Link href={`${base}/sales`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t("salesHistory")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={`${t("saleDetail")} #${sale.saleNumber}`} backHref={`${base}/sales`} />
 
       <Card className="max-w-lg">
         <CardContent className="p-4 sm:p-6 space-y-4">

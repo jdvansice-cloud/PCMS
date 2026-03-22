@@ -3,8 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Shield, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Plus, Shield, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -148,13 +147,7 @@ export function RolesClient({ initialRoles }: { initialRoles: RoleWithPermission
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("rolesTitle")}>
-        <Link href={`/app/${organization.slug}/settings`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={t("rolesTitle")} backHref={`/app/${organization.slug}/settings`} />
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* ── Left sidebar: Role list ─────────────────────────── */}

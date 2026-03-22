@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,20 +38,13 @@ export default async function SalesPage({
   const page = Number(sp.page) || 1;
   const t = await getTranslations("pos");
   const tc = await getTranslations("common");
-  const tf = await getTranslations("form");
   const base = `/app/${slug}/pos`;
 
   const { sales, totalPages } = await getSales(search, page);
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <PageHeader title={t("salesHistory")}>
-        <Link href={base}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {tf("backToPos")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={t("salesHistory")} backHref={base} />
 
       <SearchInput placeholder={t("searchItems")} />
 

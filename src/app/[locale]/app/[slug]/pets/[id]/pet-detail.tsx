@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,24 +60,17 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={pet.name}>
-        <div className="flex gap-2">
-          <Link href={base}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
+      <PageHeader title={pet.name} backHref={base}>
+        {!editing && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Edit className="h-4 w-4 mr-1" /> {tc("edit")}
             </Button>
-          </Link>
-          {!editing && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Edit className="h-4 w-4 mr-1" /> {tc("edit")}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDeleting(true)} className="text-destructive">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
+            <Button variant="outline" size="sm" onClick={() => setDeleting(true)} className="text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </PageHeader>
 
       <Card>

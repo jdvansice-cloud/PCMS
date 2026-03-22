@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,13 +60,7 @@ export default function AvailabilityPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={tf("businessHours")}>
-        <Link href={`/app/${organization.slug}/settings`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={tf("businessHours")} backHref={`/app/${organization.slug}/settings`} />
 
       <Card>
         <CardContent className="p-4 sm:p-6">

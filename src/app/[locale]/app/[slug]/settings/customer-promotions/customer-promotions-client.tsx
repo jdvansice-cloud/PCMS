@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
-  ArrowLeft,
   Plus,
   Pencil,
   Search,
@@ -14,7 +13,6 @@ import {
   Power,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -429,12 +427,7 @@ export function LoyaltyPromotionsClient({ initialData }: LoyaltyPromotionsClient
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("loyaltyPromotionsTitle")}>
-        <Link href={`/app/${organization.slug}/settings`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
-          </Button>
-        </Link>
+      <PageHeader title={t("loyaltyPromotionsTitle")} backHref={`/app/${organization.slug}/settings`}>
         <Button size="sm" className="gap-1.5" onClick={openCreate}>
           <Plus className="h-4 w-4" /> {t("loyaltyPromoNew")}
         </Button>

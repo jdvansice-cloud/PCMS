@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Palette, Save } from "lucide-react";
-import Link from "next/link";
+import { Palette, Save } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 const FONT_OPTIONS = [
   "Inter",
@@ -82,17 +82,7 @@ export default function BrandingPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={`/app/${slug}/settings`}>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("branding")}</h1>
-          <p className="text-muted-foreground mt-0.5">{t("brandingDesc")}</p>
-        </div>
-      </div>
+      <PageHeader title={t("branding")} description={t("brandingDesc")} backHref={`/app/${slug}/settings`} />
 
       {/* Color Pickers */}
       <Card>

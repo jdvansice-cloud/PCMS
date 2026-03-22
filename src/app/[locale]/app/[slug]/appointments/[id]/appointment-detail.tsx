@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,22 +73,15 @@ export function AppointmentDetail({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`${ta("title")} - ${a.pet.name}`}>
-        <div className="flex gap-2">
-          <Link href={base}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDeleting(true)}
-            className="text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+      <PageHeader title={`${ta("title")} - ${a.pet.name}`} backHref={base}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDeleting(true)}
+          className="text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">

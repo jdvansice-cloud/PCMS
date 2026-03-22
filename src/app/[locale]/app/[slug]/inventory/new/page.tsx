@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +27,7 @@ export default function NewProductPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={ti("newProduct")}>
-        <Link href={base}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> {tc("back")}
-          </Button>
-        </Link>
-      </PageHeader>
+      <PageHeader title={ti("newProduct")} backHref={base} />
 
       <Card>
         <CardContent className="p-4 sm:p-6">
