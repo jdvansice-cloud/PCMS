@@ -42,16 +42,16 @@ import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { formatCurrency } from "@/lib/utils";
 import {
-  getCustomerPromotions,
-  getCustomerPromotion,
-  createCustomerPromotion,
-  updateCustomerPromotion,
-  toggleCustomerPromotion,
+  getLoyaltyPromotions,
+  getLoyaltyPromotion,
+  createLoyaltyPromotion,
+  updateLoyaltyPromotion,
+  toggleLoyaltyPromotion,
 } from "../actions";
 import { getPosData } from "../../pos/actions";
 
-type CustPromosData = Awaited<ReturnType<typeof getCustomerPromotions>>;
-type CustPromoRow = CustPromosData["items"][number];
+type LoyaltyPromosData = Awaited<ReturnType<typeof getLoyaltyPromotions>>;
+type LoyaltyPromoRow = LoyaltyPromosData["items"][number];
 type PosData = Awaited<ReturnType<typeof getPosData>>;
 
 function toDateInputValue(d: Date | string): string {
@@ -155,7 +155,7 @@ function ItemPicker({
       <div className="relative">
         <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
-          placeholder={t("custPromoSearchItems")}
+          placeholder={t("loyaltyPromoSearchItems")}
           value={itemSearch}
           onChange={(e) => setItemSearch(e.target.value)}
           className="pl-7 h-8 text-sm"
@@ -215,7 +215,7 @@ function ItemPicker({
           )}
           {filteredProducts.length === 0 && filteredServices.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-2">
-              {t("custPromoNoResults")}
+              {t("loyaltyPromoNoResults")}
             </p>
           )}
         </div>
@@ -224,11 +224,11 @@ function ItemPicker({
   );
 }
 
-interface CustomerPromotionsClientProps {
-  initialData: CustPromosData;
+interface LoyaltyPromotionsClientProps {
+  initialData: LoyaltyPromosData;
 }
 
-export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClientProps) {
+export function LoyaltyPromotionsClient({ initialData }: LoyaltyPromotionsClientProps) {
   const { organization } = useTenant();
   const router = useRouter();
   const t = useTranslations("settings");
@@ -265,7 +265,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     async (s?: string, p?: number) => {
       setLoading(true);
       try {
-        const result = await getCustomerPromotions(s || undefined, p ?? 1);
+        const result = await getLoyaltyPromotions(s || undefined, p ?? 1);
         setData(result);
       } finally {
         setLoading(false);
@@ -304,12 +304,12 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     setShowDialog(true);
   }
 
-  async function openEdit(promo: CustPromoRow) {
+  async function openEdit(promo: LoyaltyPromoRow) {
     setEditId(promo.id);
     setSaving(true);
     setShowDialog(true);
     try {
-      const full = await getCustomerPromotion(promo.id);
+      const full = await getLoyaltyPromotion(promo.id);
       if (!full) return;
       setFormName(full.name);
       setFormDescription(full.description ?? "");
@@ -359,9 +359,9 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
       };
 
       if (editId) {
-        await updateCustomerPromotion(editId, base);
+        await updateLoyaltyPromotion(editId, base);
       } else {
-        await createCustomerPromotion(base);
+        await createLoyaltyPromotion(base);
       }
 
       setShowDialog(false);
@@ -373,8 +373,8 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     }
   }
 
-  async function handleToggle(promo: CustPromoRow) {
-    await toggleCustomerPromotion(promo.id);
+  async function handleToggle(promo: LoyaltyPromoRow) {
+    await toggleLoyaltyPromotion(promo.id);
     await loadData(search, page);
     router.refresh();
   }
@@ -384,7 +384,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     await loadData(search, newPage);
   }
 
-  function getStatus(promo: CustPromoRow) {
+  function getStatus(promo: LoyaltyPromoRow) {
     const now = new Date();
     const start = new Date(promo.startsAt);
     const end = new Date(promo.endsAt);
@@ -394,7 +394,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     return "active";
   }
 
-  function statusBadge(promo: CustPromoRow) {
+  function statusBadge(promo: LoyaltyPromoRow) {
     const status = getStatus(promo);
     switch (status) {
       case "active":
@@ -408,19 +408,19 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
     }
   }
 
-  function formatDateRange(promo: CustPromoRow) {
+  function formatDateRange(promo: LoyaltyPromoRow) {
     const fmt = (d: Date | string) => new Date(d).toLocaleDateString();
     return `${fmt(promo.startsAt)} - ${fmt(promo.endsAt)}`;
   }
 
-  function getQualifyingItems(promo: CustPromoRow) {
+  function getQualifyingItems(promo: LoyaltyPromoRow) {
     return promo.items
       .filter((i) => i.role === "QUALIFYING")
       .map((i) => i.product?.name ?? i.service?.name ?? "?")
       .join(", ");
   }
 
-  function getRewardItems(promo: CustPromoRow) {
+  function getRewardItems(promo: LoyaltyPromoRow) {
     return promo.items
       .filter((i) => i.role === "REWARD")
       .map((i) => i.product?.name ?? i.service?.name ?? "?")
@@ -429,26 +429,26 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("customerPromotionsTitle")}>
+      <PageHeader title={t("loyaltyPromotionsTitle")}>
         <Link href={`/app/${organization.slug}/settings`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" /> {t("backToSettings")}
           </Button>
         </Link>
         <Button size="sm" className="gap-1.5" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> {t("custPromoNew")}
+          <Plus className="h-4 w-4" /> {t("loyaltyPromoNew")}
         </Button>
       </PageHeader>
 
       <p className="text-sm text-muted-foreground -mt-4">
-        {t("customerPromotionsHelp")}
+        {t("loyaltyPromotionsHelp")}
       </p>
 
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={t("custPromoSearch")}
+          placeholder={t("loyaltyPromoSearch")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -462,7 +462,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
               <Award className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">
-              {t("custPromoEmpty")}
+              {t("loyaltyPromoEmpty")}
             </p>
           </CardContent>
         </Card>
@@ -484,14 +484,14 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
                           </Badge>
                         )}
                         {promo.isRecurring && (
-                          <Badge variant="outline">{t("custPromoRecurring")}</Badge>
+                          <Badge variant="outline">{t("loyaltyPromoRecurring")}</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {t("custPromoThresholdDisplay", { count: promo.threshold })} &middot; {formatDateRange(promo)}
+                        {t("loyaltyPromoThresholdDisplay", { count: promo.threshold })} &middot; {formatDateRange(promo)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {t("custPromoRewardLabel")}: {getRewardItems(promo)}
+                        {t("loyaltyPromoRewardLabel")}: {getRewardItems(promo)}
                       </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -514,12 +514,12 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("promoName")}</TableHead>
-                  <TableHead>{t("custPromoThreshold")}</TableHead>
-                  <TableHead>{t("custPromoQualifying")}</TableHead>
-                  <TableHead>{t("custPromoReward")}</TableHead>
+                  <TableHead>{t("loyaltyPromoThreshold")}</TableHead>
+                  <TableHead>{t("loyaltyPromoQualifying")}</TableHead>
+                  <TableHead>{t("loyaltyPromoReward")}</TableHead>
                   <TableHead>{t("promoDateRange")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("custPromoCustomers")}</TableHead>
+                  <TableHead>{t("loyaltyPromoCustomers")}</TableHead>
                   <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -598,8 +598,8 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
       >
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editId ? t("custPromoEdit") : t("custPromoNew")}</DialogTitle>
-            <DialogDescription>{t("custPromoDialogDesc")}</DialogDescription>
+            <DialogTitle>{editId ? t("loyaltyPromoEdit") : t("loyaltyPromoNew")}</DialogTitle>
+            <DialogDescription>{t("loyaltyPromoDialogDesc")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSave}>
             <div className="space-y-3 py-2">
@@ -611,7 +611,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
 
               {/* Description */}
               <div className="space-y-1.5">
-                <Label>{t("custPromoDescription")}</Label>
+                <Label>{t("loyaltyPromoDescription")}</Label>
                 <Textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
@@ -622,7 +622,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
 
               {/* Threshold */}
               <div className="space-y-1.5">
-                <Label>{t("custPromoThreshold")} *</Label>
+                <Label>{t("loyaltyPromoThreshold")} *</Label>
                 <Input
                   type="number"
                   min="1"
@@ -631,7 +631,7 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
                   value={formThreshold}
                   onChange={(e) => setFormThreshold(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">{t("custPromoThresholdHelp")}</p>
+                <p className="text-xs text-muted-foreground">{t("loyaltyPromoThresholdHelp")}</p>
               </div>
 
               {/* Qualifying items */}
@@ -644,10 +644,10 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
                     selectedServiceIds={formQualifyingServiceIds}
                     onProductsChange={setFormQualifyingProductIds}
                     onServicesChange={setFormQualifyingServiceIds}
-                    label={t("custPromoQualifyingLabel")}
+                    label={t("loyaltyPromoQualifyingLabel")}
                     t={t}
                   />
-                  <p className="text-xs text-muted-foreground">{t("custPromoQualifyingHelp")}</p>
+                  <p className="text-xs text-muted-foreground">{t("loyaltyPromoQualifyingHelp")}</p>
                 </div>
               )}
 
@@ -661,10 +661,10 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
                     selectedServiceIds={formRewardServiceIds}
                     onProductsChange={setFormRewardProductIds}
                     onServicesChange={setFormRewardServiceIds}
-                    label={t("custPromoRewardLabel")}
+                    label={t("loyaltyPromoRewardLabel")}
                     t={t}
                   />
-                  <p className="text-xs text-muted-foreground">{t("custPromoRewardHelp")}</p>
+                  <p className="text-xs text-muted-foreground">{t("loyaltyPromoRewardHelp")}</p>
                 </div>
               )}
 
@@ -693,18 +693,18 @@ export function CustomerPromotionsClient({ initialData }: CustomerPromotionsClie
                     onCheckedChange={(checked) => setFormIsRecurring(checked === true)}
                   />
                   <Label htmlFor="recurring" className="text-sm font-normal cursor-pointer">
-                    {t("custPromoRecurringLabel")}
+                    {t("loyaltyPromoRecurringLabel")}
                   </Label>
                 </div>
-                <p className="text-xs text-muted-foreground ml-6">{t("custPromoRecurringHelp")}</p>
+                <p className="text-xs text-muted-foreground ml-6">{t("loyaltyPromoRecurringHelp")}</p>
 
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="cust-promo-online"
+                    id="loyalty-promo-online"
                     checked={formAvailableOnline}
                     onCheckedChange={(checked) => setFormAvailableOnline(checked === true)}
                   />
-                  <Label htmlFor="cust-promo-online" className="text-sm font-normal cursor-pointer">
+                  <Label htmlFor="loyalty-promo-online" className="text-sm font-normal cursor-pointer">
                     {t("promoAvailableOnline")}
                   </Label>
                 </div>

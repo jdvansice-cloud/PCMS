@@ -1447,12 +1447,12 @@ export async function upsertGroomingKennels(counts: {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  CUSTOMER PROMOTIONS
+//  LOYALTY PROMOTIONS
 // ═══════════════════════════════════════════════════════════
 
-const CUST_PROMO_PAGE_SIZE = 20;
+const LOYALTY_PROMO_PAGE_SIZE = 20;
 
-export async function getCustomerPromotions(search?: string, page = 1) {
+export async function getLoyaltyPromotions(search?: string, page = 1) {
   const { organizationId } = await getCurrentUser();
 
   const where = {
@@ -1475,16 +1475,16 @@ export async function getCustomerPromotions(search?: string, page = 1) {
         _count: { select: { progress: true } },
       },
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * CUST_PROMO_PAGE_SIZE,
-      take: CUST_PROMO_PAGE_SIZE,
+      skip: (page - 1) * LOYALTY_PROMO_PAGE_SIZE,
+      take: LOYALTY_PROMO_PAGE_SIZE,
     }),
     prisma.customerPromotion.count({ where }),
   ]);
 
-  return { items, total, page, pageSize: CUST_PROMO_PAGE_SIZE, totalPages: Math.ceil(total / CUST_PROMO_PAGE_SIZE) };
+  return { items, total, page, pageSize: LOYALTY_PROMO_PAGE_SIZE, totalPages: Math.ceil(total / LOYALTY_PROMO_PAGE_SIZE) };
 }
 
-export async function getCustomerPromotion(id: string) {
+export async function getLoyaltyPromotion(id: string) {
   const { organizationId } = await getCurrentUser();
 
   return prisma.customerPromotion.findFirst({
@@ -1500,7 +1500,7 @@ export async function getCustomerPromotion(id: string) {
   });
 }
 
-export async function createCustomerPromotion(input: {
+export async function createLoyaltyPromotion(input: {
   name: string;
   description?: string;
   threshold: number;
@@ -1542,7 +1542,7 @@ export async function createCustomerPromotion(input: {
     organizationId,
     userId: user.id,
     action: "CREATE",
-    entityType: "CustomerPromotion",
+    entityType: "LoyaltyPromotion",
     entityId: promo.id,
     metadata: { name: input.name, threshold: input.threshold },
   });
@@ -1551,7 +1551,7 @@ export async function createCustomerPromotion(input: {
   return { success: true, promotion: promo };
 }
 
-export async function updateCustomerPromotion(
+export async function updateLoyaltyPromotion(
   id: string,
   input: {
     name: string;
@@ -1572,7 +1572,7 @@ export async function updateCustomerPromotion(
   const existing = await prisma.customerPromotion.findFirst({
     where: { id, organizationId },
   });
-  if (!existing) throw new Error("Customer promotion not found");
+  if (!existing) throw new Error("Loyalty promotion not found");
 
   const items = [
     ...input.qualifyingProductIds.map((productId) => ({ role: "QUALIFYING" as const, productId, serviceId: null })),
@@ -1606,7 +1606,7 @@ export async function updateCustomerPromotion(
     organizationId,
     userId: user.id,
     action: "UPDATE",
-    entityType: "CustomerPromotion",
+    entityType: "LoyaltyPromotion",
     entityId: id,
     metadata: { name: input.name },
   });
@@ -1615,13 +1615,13 @@ export async function updateCustomerPromotion(
   return { success: true };
 }
 
-export async function toggleCustomerPromotion(id: string) {
+export async function toggleLoyaltyPromotion(id: string) {
   const { user, organizationId, slug } = await getCurrentUser();
 
   const promo = await prisma.customerPromotion.findFirst({
     where: { id, organizationId },
   });
-  if (!promo) throw new Error("Customer promotion not found");
+  if (!promo) throw new Error("Loyalty promotion not found");
 
   const newState = !promo.isActive;
   await prisma.customerPromotion.update({
@@ -1633,7 +1633,7 @@ export async function toggleCustomerPromotion(id: string) {
     organizationId,
     userId: user.id,
     action: "UPDATE",
-    entityType: "CustomerPromotion",
+    entityType: "LoyaltyPromotion",
     entityId: id,
     metadata: { name: promo.name, isActive: newState },
   });
