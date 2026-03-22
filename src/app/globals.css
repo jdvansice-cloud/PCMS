@@ -192,6 +192,7 @@
   color: rgba(255,255,255,0.9);
 }
 .sidebar-nav-item-active {
-  background-color: rgba(255,255,255,0.12);
+  background-color: var(--brand-primary, oklch(0.55 0.15 250));
   color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
