@@ -1,7 +1,7 @@
-import { getCustomerPromotions } from "../actions";
-import { CustomerPromotionsClient } from "./customer-promotions-client";
+import { getLoyaltyPromotions } from "../actions";
+import { LoyaltyPromotionsClient } from "./customer-promotions-client";
 
-export default async function CustomerPromotionsPage() {
-  const initialData = await getCustomerPromotions();
-  return <CustomerPromotionsClient initialData={initialData} />;
+export default async function LoyaltyPromotionsPage() {
+  const initialData = await getLoyaltyPromotions();
+  return <LoyaltyPromotionsClient initialData={initialData} />;
 }
