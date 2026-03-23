@@ -675,61 +675,65 @@ export function GroomingBoardClient({
 
       {/* ── New Appointment Dialog ────────────────────────────── */}
       <Dialog open={newApptOpen} onOpenChange={setNewApptOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("newAppointment")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* Owner & Pet */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>{t("owner")} *</Label>
-                <Select
-                  value={newOwnerId}
-                  onValueChange={(v) => {
-                    setNewOwnerId(v ?? "");
-                    setNewPetId("");
-                    setNewServices([]);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectOwner")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.owners.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>
-                        {o.firstName} {o.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("selectPet")} *</Label>
-                <Select
-                  value={newPetId}
-                  onValueChange={(v) => {
-                    setNewPetId(v ?? "");
-                    setNewServices([]);
-                  }}
-                  disabled={!newOwnerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectPet")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {newOwner?.pets.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} {p.size ? `(${p.size})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Owner */}
+            <div className="space-y-1.5">
+              <Label>{t("owner")} *</Label>
+              <Select
+                value={newOwnerId}
+                onValueChange={(v) => {
+                  setNewOwnerId(v ?? "");
+                  setNewPetId("");
+                  setNewServices([]);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectOwner")}>
+                    {newOwner ? `${newOwner.firstName} ${newOwner.lastName}` : t("selectOwner")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.owners.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.firstName} {o.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Pet */}
+            <div className="space-y-1.5">
+              <Label>{t("selectPet")} *</Label>
+              <Select
+                value={newPetId}
+                onValueChange={(v) => {
+                  setNewPetId(v ?? "");
+                  setNewServices([]);
+                }}
+                disabled={!newOwnerId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectPet")}>
+                    {newPet ? `${newPet.name}${newPet.size ? ` (${newPet.size})` : ""}` : t("selectPet")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {newOwner?.pets.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} {p.size ? `(${p.size})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Date & Time */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-2">
               <div className="space-y-1.5">
                 <Label>{tc("date")} *</Label>
                 <Input
@@ -748,38 +752,46 @@ export function GroomingBoardClient({
               </div>
             </div>
 
-            {/* Groomer */}
-            <div className="space-y-1.5">
-              <Label>{t("groomer")}</Label>
-              <Select value={newGroomerId} onValueChange={(v) => setNewGroomerId(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectGroomer")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {formData.groomers.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.firstName} {g.lastName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Kennel */}
-            <div className="space-y-1.5">
-              <Label>{t("cage")}</Label>
-              <Select value={newKennelId} onValueChange={(v) => setNewKennelId(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectCage")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {compatibleNewKennels.map((k) => (
-                    <SelectItem key={k.id} value={k.id}>
-                      {k.name} ({k.size})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Groomer & Kennel */}
+            <div className="grid gap-4 grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{t("groomer")}</Label>
+                <Select value={newGroomerId} onValueChange={(v) => setNewGroomerId(v ?? "")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectGroomer")}>
+                      {newGroomerId
+                        ? (() => { const g = formData.groomers.find((g) => g.id === newGroomerId); return g ? `${g.firstName} ${g.lastName}` : t("selectGroomer"); })()
+                        : t("selectGroomer")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.groomers.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.firstName} {g.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("cage")}</Label>
+                <Select value={newKennelId} onValueChange={(v) => setNewKennelId(v ?? "")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectCage")}>
+                      {newKennelId
+                        ? (() => { const k = compatibleNewKennels.find((k) => k.id === newKennelId); return k ? `${k.name} (${k.size})` : t("selectCage"); })()
+                        : t("selectCage")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {compatibleNewKennels.map((k) => (
+                      <SelectItem key={k.id} value={k.id}>
+                        {k.name} ({k.size})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Services */}
