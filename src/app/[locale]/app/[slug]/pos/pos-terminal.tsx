@@ -846,14 +846,26 @@ export function PosTerminal({
       setShowCashCalc(true);
       return;
     }
-    // Clear existing payments and pay full amount with one method
-    setPayments([
-      {
-        id: `pay-${++paymentIdCounter}`,
-        method,
-        amount: finalTotal - loyaltyRedeemAmount,
-      },
-    ]);
+    if (payments.length === 0) {
+      // First payment — pay full amount
+      setPayments([
+        {
+          id: `pay-${++paymentIdCounter}`,
+          method,
+          amount: finalTotal - loyaltyRedeemAmount,
+        },
+      ]);
+    } else if (remainingToPay > 0.01) {
+      // Split payment — add remaining amount
+      setPayments((prev) => [
+        ...prev,
+        {
+          id: `pay-${++paymentIdCounter}`,
+          method,
+          amount: remainingToPay,
+        },
+      ]);
+    }
   }
 
   // ── Charge ──
@@ -1667,25 +1679,25 @@ export function PosTerminal({
                         ["YAPPY", t("yappy")],
                         ["BANK_TRANSFER", t("bankTransfer")],
                       ] as const
-                    ).map(([method, label]) => (
-                      <Button
-                        key={method}
-                        variant={
-                          payments.length === 1 &&
-                          payments[0].method === method
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => handleQuickPay(method as PaymentMethod)}
-                      >
-                        {method === "CARD" ? (
-                          <CreditCard className="h-3 w-3" />
-                        ) : null}
-                        {label}
-                      </Button>
-                    ))}
+                    ).map(([method, label]) => {
+                      const hasPayment = payments.some((p) => p.method === method);
+                      const fullyPaid = payments.length > 0 && remainingToPay <= 0.01;
+                      return (
+                        <Button
+                          key={method}
+                          variant={hasPayment ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => handleQuickPay(method as PaymentMethod)}
+                          disabled={fullyPaid && !hasPayment}
+                        >
+                          {method === "CARD" ? (
+                            <CreditCard className="h-3 w-3" />
+                          ) : null}
+                          {label}
+                        </Button>
+                      );
+                    })}
                   </div>
 
                   {/* Split payment section */}
@@ -1738,53 +1750,6 @@ export function PosTerminal({
                     </div>
                   )}
 
-                  {/* Add split payment */}
-                  {remainingToPay > 0.01 && payments.length > 0 && (
-                    <div className="flex gap-1.5 items-center">
-                      <Select
-                        value={newPayMethod}
-                        onValueChange={(v) =>
-                          v && setNewPayMethod(v as PaymentMethod)
-                        }
-                      >
-                        <SelectTrigger className="h-7 text-xs flex-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CASH">{t("cash")}</SelectItem>
-                          <SelectItem value="CARD">{t("card")}</SelectItem>
-                          <SelectItem value="YAPPY">{t("yappy")}</SelectItem>
-                          <SelectItem value="BANK_TRANSFER">
-                            {t("bankTransfer")}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        className="h-7 text-xs w-24"
-                        placeholder={formatCurrency(remainingToPay)}
-                        value={newPayAmount}
-                        onChange={(e) => setNewPayAmount(e.target.value)}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => {
-                          if (newPayMethod === "CASH") {
-                            setCashDenominations({});
-                            setShowCashCalc(true);
-                          } else {
-                            addPayment();
-                          }
-                        }}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
                 </div>
 
                 {/* ── Charge Button ── */}
