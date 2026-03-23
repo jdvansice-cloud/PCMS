@@ -691,6 +691,7 @@ model Appointment {
   petId           String            @map("pet_id")
   vetId           String?           @map("vet_id")
   serviceId       String?           @map("service_id")
+  kennelId        String?           @map("kennel_id")
   type            AppointmentType   @default(CONSULTATION)
   status          AppointmentStatus @default(SCHEDULED)
   scheduledAt     DateTime          @map("scheduled_at")
@@ -710,6 +711,7 @@ model Appointment {
   pet           Pet            @relation(fields: [petId], references: [id])
   vet           User?          @relation("AppointmentVet", fields: [vetId], references: [id])
   service       Service?       @relation(fields: [serviceId], references: [id])
+  kennel        Kennel?        @relation(fields: [kennelId], references: [id])
   medicalRecord MedicalRecord?
   groomingSession GroomingSession?
   groomingPickup  GroomingPickup?
@@ -928,6 +930,7 @@ model Kennel {
   branch       Branch       @relation(fields: [branchId], references: [id])
   stays        KennelStay[]
   groomingSessions GroomingSession[]
+  appointments Appointment[]
 
   @@map("kennels")
 }

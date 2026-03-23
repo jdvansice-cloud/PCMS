@@ -553,6 +553,46 @@ export function ReceptionClient({
                       </Select>
                     </div>
                   </div>
+                  {/* Kennel tile grid */}
+                  <div className="space-y-3">
+                    <Label>{t("selectKennel")}</Label>
+                    {sortedSizeKeys.map((size) => (
+                      <div key={size} className="space-y-1.5">
+                        <h4 className="text-xs font-medium text-muted-foreground">{size}</h4>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                          {kennelsBySize[size].map((kennel) => {
+                            const available = isKennelAvailable(kennel);
+                            const selected = selectedKennelId === kennel.id;
+                            return (
+                              <Card
+                                key={kennel.id}
+                                className={`cursor-pointer transition-all ${
+                                  selected
+                                    ? "border-primary bg-primary/10 ring-2 ring-primary"
+                                    : available
+                                    ? "border-green-300 bg-green-50 hover:border-green-400 hover:shadow-sm"
+                                    : "border-muted bg-muted/40 opacity-50 cursor-not-allowed"
+                                }`}
+                                onClick={() => {
+                                  if (!available) return;
+                                  setSelectedKennelId(selected ? "" : kennel.id);
+                                }}
+                              >
+                                <CardContent className="p-2 text-center">
+                                  <p className="text-xs font-semibold">{kennel.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {available
+                                      ? selected ? t("selected") : t("available")
+                                      : occupiedSet.has(kennel.id) ? t("occupied") : t("tooSmall")}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                   <div className="space-y-1.5">
                     <Label>{t("reason")}</Label>
                     <Textarea

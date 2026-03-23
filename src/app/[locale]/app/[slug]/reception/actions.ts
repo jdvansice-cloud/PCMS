@@ -91,19 +91,34 @@ export async function getTodaysScheduledAppointments() {
     }),
   ]);
 
-  // Get occupied kennels today
-  const occupiedKennels = await prisma.groomingSession.findMany({
-    where: {
-      organizationId,
-      branchId: branch.id,
-      scheduledAt: { gte: dayStart, lt: dayEnd },
-      kennelId: { not: null },
-      kennelReleasedAt: null,
-      status: { notIn: ["COMPLETED", "CANCELLED"] },
-    },
-    select: { kennelId: true },
-  });
-  const occupiedIds = occupiedKennels.map((s) => s.kennelId!);
+  // Get occupied kennels today (from grooming sessions AND clinic appointments)
+  const [occupiedByGrooming, occupiedByAppointments] = await Promise.all([
+    prisma.groomingSession.findMany({
+      where: {
+        organizationId,
+        branchId: branch.id,
+        scheduledAt: { gte: dayStart, lt: dayEnd },
+        kennelId: { not: null },
+        kennelReleasedAt: null,
+        status: { notIn: ["COMPLETED", "CANCELLED"] },
+      },
+      select: { kennelId: true },
+    }),
+    prisma.appointment.findMany({
+      where: {
+        organizationId,
+        branchId: branch.id,
+        kennelId: { not: null },
+        status: "IN_PROGRESS",
+        type: { not: "GROOMING" },
+      },
+      select: { kennelId: true },
+    }),
+  ]);
+  const occupiedIds = [
+    ...occupiedByGrooming.map((s) => s.kennelId!),
+    ...occupiedByAppointments.map((a) => a.kennelId!),
+  ];
 
   return {
     appointments,
@@ -140,10 +155,14 @@ export async function checkInScheduledAppointment(
 
   const now = new Date();
 
-  // Update appointment status
+  // Update appointment status (assign kennel for all visit types)
   await prisma.appointment.update({
     where: { id: appointmentId },
-    data: { status: "IN_PROGRESS", checkedInAt: now },
+    data: {
+      status: "IN_PROGRESS",
+      checkedInAt: now,
+      kennelId: data.kennelId || null,
+    },
   });
 
   // If grooming, create a grooming session
@@ -215,6 +234,7 @@ export async function createWalkInAppointment(data: {
       petId: data.petId,
       vetId: data.type !== "GROOMING" ? (data.vetId || null) : null,
       serviceId: data.serviceId || null,
+      kennelId: data.kennelId || null,
       type: data.type,
       status: "IN_PROGRESS",
       scheduledAt: now,
