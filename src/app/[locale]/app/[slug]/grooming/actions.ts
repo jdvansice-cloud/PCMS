@@ -353,6 +353,170 @@ export async function markGroomingPickedUp(sessionId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// getGroomingFormData — for creating grooming appointments
+// ---------------------------------------------------------------------------
+export async function getGroomingFormData() {
+  const { organizationId } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+
+  const [owners, services, kennels, groomers] = await Promise.all([
+    prisma.owner.findMany({
+      where: { organizationId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        pets: {
+          where: { isActive: true },
+          select: { id: true, name: true, species: true, breed: true, size: true },
+        },
+      },
+      orderBy: { firstName: "asc" },
+    }),
+    prisma.service.findMany({
+      where: { organizationId, isActive: true, type: "GROOMING" },
+      select: { id: true, name: true, price: true, durationMin: true, petSizes: true },
+      orderBy: { name: "asc" },
+    }),
+    branch
+      ? prisma.kennel.findMany({
+          where: { organizationId, branchId: branch.id, isAvailable: true },
+          orderBy: [{ size: "asc" }, { name: "asc" }],
+        })
+      : [],
+    prisma.user.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+        OR: [
+          { userType: { in: ["ADMIN", "OWNER"] } },
+          { role: { name: "Peluquero" } },
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: { firstName: "asc" },
+    }),
+  ]);
+
+  return {
+    owners,
+    services: services.map((s) => ({ ...s, price: Number(s.price) })),
+    kennels,
+    groomers,
+    branchId: branch?.id ?? "",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// createGroomingAppointment — scheduled (not walk-in)
+// ---------------------------------------------------------------------------
+export async function createGroomingAppointment(data: {
+  ownerId: string;
+  petId: string;
+  scheduledAt: string; // ISO datetime
+  groomerId?: string;
+  kennelId?: string;
+  services: string[]; // service names
+  specialInstructions?: string;
+  petSize: string;
+}) {
+  const { organizationId, user, slug } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) throw new Error("No branch configured");
+
+  const scheduledDate = new Date(data.scheduledAt);
+
+  // Create the appointment
+  const appointment = await prisma.appointment.create({
+    data: {
+      organizationId,
+      branchId: branch.id,
+      ownerId: data.ownerId,
+      petId: data.petId,
+      type: "GROOMING",
+      status: "SCHEDULED",
+      scheduledAt: scheduledDate,
+      durationMin: 60,
+      isWalkIn: false,
+    },
+  });
+
+  // Create the grooming session
+  await prisma.groomingSession.create({
+    data: {
+      organizationId,
+      branchId: branch.id,
+      petId: data.petId,
+      appointmentId: appointment.id,
+      groomerId: data.groomerId || null,
+      kennelId: data.kennelId || null,
+      petSize: (data.petSize || "MEDIUM") as KennelSize,
+      services: data.services,
+      specialInstructions: data.specialInstructions || null,
+      scheduledAt: scheduledDate,
+      kennelAssignedAt: data.kennelId ? new Date() : null,
+    },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "CREATE",
+    entityType: "Appointment",
+    entityId: appointment.id,
+    changes: { type: { old: null, new: "GROOMING" } },
+  });
+
+  revalidatePath(`/app/${slug}/grooming`);
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// getScheduledGroomingAppointments — upcoming scheduled (not checked in)
+// ---------------------------------------------------------------------------
+export async function getScheduledGroomingAppointments() {
+  const { organizationId } = await getCurrentUser();
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      organizationId,
+      type: "GROOMING",
+      status: { in: ["SCHEDULED", "CONFIRMED"] },
+      checkedInAt: null,
+      scheduledAt: { gte: now },
+    },
+    include: {
+      owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      pet: { select: { id: true, name: true, species: true, breed: true, size: true } },
+      groomingSession: {
+        select: {
+          id: true,
+          services: true,
+          petSize: true,
+          groomer: { select: { firstName: true, lastName: true } },
+          kennel: { select: { name: true, size: true } },
+        },
+      },
+    },
+    orderBy: { scheduledAt: "asc" },
+    take: 50,
+  });
+
+  return appointments;
+}
+
+// ---------------------------------------------------------------------------
 // getKennelOccupancy
 // ---------------------------------------------------------------------------
 export async function getKennelOccupancy(dateStr: string) {

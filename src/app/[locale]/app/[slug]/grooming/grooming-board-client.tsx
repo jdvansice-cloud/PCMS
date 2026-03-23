@@ -11,6 +11,9 @@ import {
   updateGroomingStatus,
   getKennelOccupancy,
   markGroomingPickedUp,
+  getGroomingFormData,
+  createGroomingAppointment,
+  getScheduledGroomingAppointments,
 } from "./actions";
 import { PageHeader } from "@/components/page-header";
 import { useFormatDate } from "@/lib/use-format-date";
@@ -38,6 +41,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Calendar, Clock } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types inferred from server actions
@@ -46,10 +51,14 @@ type BoardData = Awaited<ReturnType<typeof getGroomingBoard>>;
 type GroomerList = Awaited<ReturnType<typeof getGroomers>>;
 type Session = BoardData["sessions"][number];
 type KennelOccupancy = Awaited<ReturnType<typeof getKennelOccupancy>>;
+type FormData = Awaited<ReturnType<typeof getGroomingFormData>>;
+type ScheduledAppointment = Awaited<ReturnType<typeof getScheduledGroomingAppointments>>[number];
 
 type Props = {
   initialData: BoardData;
   initialGroomers: GroomerList;
+  initialFormData: FormData;
+  initialScheduled: ScheduledAppointment[];
   initialDate: string;
 };
 
@@ -91,24 +100,57 @@ function statusColor(status: string) {
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+const SIZE_ORDER_CONST: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 4 };
+
 export function GroomingBoardClient({
   initialData,
   initialGroomers,
+  initialFormData,
+  initialScheduled,
   initialDate,
 }: Props) {
   const t = useTranslations("grooming");
-  const { formatTime } = useFormatDate();
+  const tc = useTranslations("common");
+  const tp = useTranslations("pets");
+  const { formatTime, formatDate, formatDateTime } = useFormatDate();
   const [isPending, startTransition] = useTransition();
 
   const [date, setDate] = useState(initialDate);
   const [data, setData] = useState<BoardData>(initialData);
   const [groomers] = useState<GroomerList>(initialGroomers);
+  const [formData] = useState<FormData>(initialFormData);
+  const [scheduled, setScheduled] = useState<ScheduledAppointment[]>(initialScheduled);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [pendingCompleteSession, setPendingCompleteSession] = useState<Session | null>(null);
   const [kennelOccupancy, setKennelOccupancy] =
     useState<KennelOccupancy | null>(null);
+
+  // -- New appointment dialog state ------------------------------------------
+  const [newApptOpen, setNewApptOpen] = useState(false);
+  const [newOwnerId, setNewOwnerId] = useState("");
+  const [newPetId, setNewPetId] = useState("");
+  const [newDate, setNewDate] = useState(date);
+  const [newTime, setNewTime] = useState("09:00");
+  const [newGroomerId, setNewGroomerId] = useState("");
+  const [newKennelId, setNewKennelId] = useState("");
+  const [newServices, setNewServices] = useState<string[]>([]);
+  const [newInstructions, setNewInstructions] = useState("");
+
+  const newOwner = formData.owners.find((o) => o.id === newOwnerId);
+  const newPet = newOwner?.pets.find((p) => p.id === newPetId);
+  const newPetSize = newPet?.size || "MEDIUM";
+
+  // Filter services by pet size
+  const availableNewServices = formData.services.filter(
+    (s) => s.petSizes.length === 0 || s.petSizes.includes(newPetSize)
+  );
+
+  // Filter kennels by pet size (same or larger)
+  const compatibleNewKennels = formData.kennels.filter(
+    (k) => (SIZE_ORDER_CONST[k.size] ?? 0) >= (SIZE_ORDER_CONST[newPetSize] ?? 1)
+  );
 
   // -- Refresh board data ---------------------------------------------------
   const refreshBoard = useCallback(
@@ -227,6 +269,49 @@ export function GroomingBoardClient({
     setDialogOpen(true);
   };
 
+  // -- New appointment handlers -----------------------------------------------
+  const resetNewApptForm = () => {
+    setNewOwnerId("");
+    setNewPetId("");
+    setNewDate(date);
+    setNewTime("09:00");
+    setNewGroomerId("");
+    setNewKennelId("");
+    setNewServices([]);
+    setNewInstructions("");
+  };
+
+  const handleCreateAppointment = () => {
+    if (!newOwnerId || !newPetId) return;
+    startTransition(async () => {
+      await createGroomingAppointment({
+        ownerId: newOwnerId,
+        petId: newPetId,
+        scheduledAt: `${newDate}T${newTime}:00`,
+        groomerId: newGroomerId || undefined,
+        kennelId: newKennelId || undefined,
+        services: newServices,
+        specialInstructions: newInstructions || undefined,
+        petSize: newPetSize,
+      });
+      setNewApptOpen(false);
+      resetNewApptForm();
+      // Refresh board and scheduled list
+      const [newData, newScheduled] = await Promise.all([
+        getGroomingBoard(date),
+        getScheduledGroomingAppointments(),
+      ]);
+      setData(newData);
+      setScheduled(newScheduled);
+    });
+  };
+
+  const toggleNewService = (name: string) => {
+    setNewServices((prev) =>
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name]
+    );
+  };
+
   // -- Available kennels for the selected session's petSize (same size or larger)
   const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 4 };
   const availableKennelsForSession = (() => {
@@ -259,12 +344,24 @@ export function GroomingBoardClient({
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} description={t("description")}>
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => handleDateChange(e.target.value)}
-          className="w-44"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="w-44"
+          />
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              resetNewApptForm();
+              setNewApptOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> {t("newAppointment")}
+          </Button>
+        </div>
       </PageHeader>
 
       {/* ── Kanban Columns ──────────────────────────────────────── */}
@@ -513,6 +610,219 @@ export function GroomingBoardClient({
             </Button>
             <Button onClick={handleConfirmComplete} disabled={isPending}>
               {t("moveTo.COMPLETED")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Scheduled Appointments ─────────────────────────────── */}
+      {scheduled.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            {t("scheduledAppointments")} ({scheduled.length})
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {scheduled.map((appt) => (
+              <Card key={appt.id} className="border-dashed">
+                <CardContent className="p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{appt.pet.name}</span>
+                    <div className="flex items-center gap-1">
+                      {appt.pet.size && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {appt.pet.size}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {appt.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {appt.owner.firstName} {appt.owner.lastName}
+                    {appt.owner.phone && ` · ${appt.owner.phone}`}
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {formatDateTime(appt.scheduledAt)}
+                  </div>
+                  {appt.groomingSession && (
+                    <div className="flex flex-wrap gap-1">
+                      {appt.groomingSession.services.map((svc) => (
+                        <Badge key={svc} variant="outline" className="text-[10px] px-1.5 py-0">
+                          {svc}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {appt.groomingSession?.groomer && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("groomer")}: {appt.groomingSession.groomer.firstName} {appt.groomingSession.groomer.lastName}
+                    </p>
+                  )}
+                  {appt.groomingSession?.kennel && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("cage")}: {appt.groomingSession.kennel.name} ({appt.groomingSession.kennel.size})
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── New Appointment Dialog ────────────────────────────── */}
+      <Dialog open={newApptOpen} onOpenChange={setNewApptOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("newAppointment")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Owner & Pet */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{t("owner")} *</Label>
+                <Select
+                  value={newOwnerId}
+                  onValueChange={(v) => {
+                    setNewOwnerId(v ?? "");
+                    setNewPetId("");
+                    setNewServices([]);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectOwner")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.owners.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.firstName} {o.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("selectPet")} *</Label>
+                <Select
+                  value={newPetId}
+                  onValueChange={(v) => {
+                    setNewPetId(v ?? "");
+                    setNewServices([]);
+                  }}
+                  disabled={!newOwnerId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectPet")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {newOwner?.pets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.size ? `(${p.size})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Date & Time */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{tc("date")} *</Label>
+                <Input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{tc("time")} *</Label>
+                <Input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Groomer */}
+            <div className="space-y-1.5">
+              <Label>{t("groomer")}</Label>
+              <Select value={newGroomerId} onValueChange={(v) => setNewGroomerId(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectGroomer")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.groomers.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.firstName} {g.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Kennel */}
+            <div className="space-y-1.5">
+              <Label>{t("cage")}</Label>
+              <Select value={newKennelId} onValueChange={(v) => setNewKennelId(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectCage")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {compatibleNewKennels.map((k) => (
+                    <SelectItem key={k.id} value={k.id}>
+                      {k.name} ({k.size})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Services */}
+            {newPetId && (
+              <div className="space-y-1.5">
+                <Label>{t("services")}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableNewServices.map((svc) => (
+                    <Badge
+                      key={svc.id}
+                      variant={newServices.includes(svc.name) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => toggleNewService(svc.name)}
+                    >
+                      {svc.name}
+                    </Badge>
+                  ))}
+                </div>
+                {availableNewServices.length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t("noServicesForSize")}</p>
+                )}
+              </div>
+            )}
+
+            {/* Special Instructions */}
+            <div className="space-y-1.5">
+              <Label>{t("specialInstructions")}</Label>
+              <Textarea
+                value={newInstructions}
+                onChange={(e) => setNewInstructions(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewApptOpen(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              onClick={handleCreateAppointment}
+              disabled={isPending || !newOwnerId || !newPetId}
+            >
+              {isPending ? tc("loading") : tc("save")}
             </Button>
           </DialogFooter>
         </DialogContent>

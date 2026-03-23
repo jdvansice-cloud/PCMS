@@ -772,7 +772,12 @@
     "breed": "Breed",
     "color": "Color",
     "size": "Size",
-    "scheduledTime": "Scheduled"
+    "scheduledTime": "Scheduled",
+    "newAppointment": "New Appointment",
+    "scheduledAppointments": "Scheduled Appointments",
+    "selectOwner": "Select owner",
+    "selectPet": "Select pet",
+    "noServicesForSize": "No services available for this pet size"
   },
   "reception": {
     "title": "Pet Reception",

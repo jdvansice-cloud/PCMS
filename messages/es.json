@@ -773,7 +773,12 @@
     "breed": "Raza",
     "color": "Color",
     "size": "Tamaño",
-    "scheduledTime": "Programado"
+    "scheduledTime": "Programado",
+    "newAppointment": "Nueva Cita",
+    "scheduledAppointments": "Citas Programadas",
+    "selectOwner": "Seleccionar dueño",
+    "selectPet": "Seleccionar mascota",
+    "noServicesForSize": "No hay servicios disponibles para este tamaño de mascota"
   },
   "reception": {
     "title": "Recepción de Mascotas",
