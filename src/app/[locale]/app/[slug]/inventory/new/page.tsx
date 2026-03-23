@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function NewProductPage() {
   const tc = useTranslations("common");
   const ti = useTranslations("inventory");
   const tf = useTranslations("form");
+  const [category, setCategory] = useState("OTHER");
 
   return (
     <div className="space-y-6">
@@ -39,9 +41,9 @@ export default function NewProductPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{ti("category")} *</Label>
-                <Select name="category" defaultValue="OTHER">
+                <Select name="category" value={category} onValueChange={(v) => v && setCategory(v)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{ti(`categoryLabels.${category}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="FOOD">{ti("categoryLabels.FOOD")}</SelectItem>

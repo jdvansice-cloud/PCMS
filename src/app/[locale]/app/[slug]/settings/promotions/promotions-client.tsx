@@ -828,7 +828,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                 <Label>{t("promoType")} *</Label>
                 <Select value={formType} onValueChange={(v) => setFormType(v as PromotionType)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{t(`promoTypeLabels.${formType}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {PROMO_TYPES.map((pt) => (
@@ -895,7 +895,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                       <Label>{t("promoRewardDiscountUnit")}</Label>
                       <Select value={formRewardDiscountUnit} onValueChange={(v) => setFormRewardDiscountUnit(v as DiscountUnit)}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue>{formRewardDiscountUnit === "PERCENTAGE" ? "%" : "$"}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="PERCENTAGE">%</SelectItem>
@@ -965,7 +965,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
                         <Label className="text-xs">{t("promoTierUnit")}</Label>
                         <Select value={tier.discountUnit} onValueChange={(v) => v && updateTier(idx, "discountUnit", v)}>
                           <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
+                            <SelectValue>{tier.discountUnit === "PERCENTAGE" ? "%" : "$"}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="PERCENTAGE">%</SelectItem>

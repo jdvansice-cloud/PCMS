@@ -19,6 +19,10 @@ import {
   Tag,
   X,
   CreditCard,
+  User,
+  ArrowLeft,
+  Check,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +56,9 @@ import {
   validateGiftCard,
   getOwnerLoyaltyBalance,
   topUpGiftCardAtPos,
+  getOwnerUnbilledServices,
 } from "./actions";
+import type { UnbilledService } from "./actions";
 import type { PaymentMethod, PromotionType, DiscountUnit } from "@/generated/prisma/client";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -63,6 +69,7 @@ type CartItem = {
   serviceId?: string;
   giftCardProductId?: string;
   isGiftCard?: boolean;
+  giftCardCode?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -280,6 +287,13 @@ export function PosTerminal({
   const tc = useTranslations("common");
   const base = `/app/${slug}/pos`;
 
+  // ── Phase State ──
+  const [phase, setPhase] = useState<"customer" | "services" | "terminal">("customer");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [unbilledServices, setUnbilledServices] = useState<UnbilledService[]>([]);
+  const [selectedUnbilled, setSelectedUnbilled] = useState<Set<string>>(new Set());
+  const [unbilledLoading, setUnbilledLoading] = useState(false);
+
   // ── Core State ──
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
@@ -337,25 +351,59 @@ export function PosTerminal({
     [data.services, search],
   );
 
+  // ── Gift Card Code Input (when selling a gift card) ──
+  const [showGCInput, setShowGCInput] = useState(false);
+  const [gcInputCode, setGcInputCode] = useState("");
+  const [gcInputError, setGcInputError] = useState("");
+  const [gcInputProduct, setGcInputProduct] = useState<PosData["giftCardProducts"][0] | null>(null);
+
   // ── Generated Gift Cards Modal ──
   const [showGCCodes, setShowGCCodes] = useState(false);
   const [generatedCodes, setGeneratedCodes] = useState<{ code: string; amount: number }[]>([]);
 
   // ── Cart Functions ──
   function addGiftCardProduct(gcp: PosData["giftCardProducts"][0]) {
-    const key = `gc-${gcp.id}-${Date.now()}`;
+    setGcInputProduct(gcp);
+    setGcInputCode("");
+    setGcInputError("");
+    setShowGCInput(true);
+  }
+
+  async function confirmGiftCardCode() {
+    if (!gcInputProduct) return;
+    const code = gcInputCode.trim().toUpperCase();
+    if (!code) {
+      setGcInputError(t("gcCodeRequired"));
+      return;
+    }
+    // Check if this code is already in the cart
+    if (cart.some((i) => i.giftCardCode === code)) {
+      setGcInputError(t("gcCodeDuplicate"));
+      return;
+    }
+    // Validate code isn't already active in the system
+    const result = await validateGiftCard(code);
+    if (result.valid) {
+      setGcInputError(t("gcCodeAlreadyActive"));
+      return;
+    }
+    const key = `gc-${gcInputProduct.id}-${Date.now()}`;
     setCart((prev) => [
       ...prev,
       {
         key,
-        giftCardProductId: gcp.id,
+        giftCardProductId: gcInputProduct.id,
         isGiftCard: true,
-        description: gcp.name,
+        giftCardCode: code,
+        description: `${gcInputProduct.name} (${code})`,
         quantity: 1,
-        unitPrice: Number(gcp.amount),
+        unitPrice: Number(gcInputProduct.amount),
         isTaxExempt: true,
       },
     ]);
+    setShowGCInput(false);
+    setGcInputProduct(null);
+    setGcInputCode("");
   }
 
   function addProduct(p: PosData["products"][0]) {
@@ -607,6 +655,102 @@ export function PosTerminal({
     [loyaltyConfig.isEnabled],
   );
 
+  // ── Customer Selection ──
+  const filteredOwners = useMemo(
+    () =>
+      customerSearch.trim()
+        ? data.owners.filter((o) =>
+            `${o.firstName} ${o.lastName}`.toLowerCase().includes(customerSearch.toLowerCase()),
+          )
+        : data.owners,
+    [data.owners, customerSearch],
+  );
+
+  async function selectCustomer(selectedOwnerId: string) {
+    setOwnerId(selectedOwnerId);
+    setCustomerSearch("");
+    // Load loyalty
+    if (selectedOwnerId && loyaltyConfig.isEnabled) {
+      setLoyaltyLoading(true);
+      try {
+        const balance = await getOwnerLoyaltyBalance(selectedOwnerId);
+        setLoyaltyBalance(balance);
+      } catch {
+        setLoyaltyBalance(0);
+      } finally {
+        setLoyaltyLoading(false);
+      }
+    }
+    // Load unbilled services
+    setUnbilledLoading(true);
+    try {
+      const services = await getOwnerUnbilledServices(selectedOwnerId);
+      setUnbilledServices(services);
+      // Auto-select completed ones
+      const autoIds = new Set(services.filter((s) => s.autoAdd).map((s) => s.appointmentId));
+      setSelectedUnbilled(autoIds);
+      if (services.length > 0) {
+        setPhase("services");
+      } else {
+        setPhase("terminal");
+      }
+    } catch {
+      setUnbilledServices([]);
+      setPhase("terminal");
+    } finally {
+      setUnbilledLoading(false);
+    }
+  }
+
+  function selectWalkIn() {
+    setOwnerId("");
+    setCustomerSearch("");
+    setUnbilledServices([]);
+    setSelectedUnbilled(new Set());
+    setPhase("terminal");
+  }
+
+  function confirmUnbilledServices() {
+    // Add selected unbilled services to cart
+    for (const svc of unbilledServices) {
+      if (selectedUnbilled.has(svc.appointmentId) && svc.price > 0) {
+        setCart((prev) => {
+          // Skip if already in cart
+          if (prev.some((i) => i.key === `appt-${svc.appointmentId}`)) return prev;
+          return [
+            ...prev,
+            {
+              key: `appt-${svc.appointmentId}`,
+              serviceId: svc.serviceId ?? undefined,
+              description: `${svc.serviceName} — ${svc.petName}`,
+              quantity: 1,
+              unitPrice: svc.price,
+              isTaxExempt: svc.isTaxExempt,
+            },
+          ];
+        });
+      }
+    }
+    setPhase("terminal");
+  }
+
+  function resetToCustomerPhase() {
+    setPhase("customer");
+    setCart([]);
+    setOwnerId("");
+    setCustomerSearch("");
+    setPayments([]);
+    setAppliedPromos([]);
+    setTxDiscountValue("");
+    setShowTxDiscount(false);
+    setLoyaltyRedeem("");
+    setLoyaltyBalance(null);
+    setGiftCardCode("");
+    setSearch("");
+    setUnbilledServices([]);
+    setSelectedUnbilled(new Set());
+  }
+
   // ── Auto-apply promotions when cart changes ──
   useEffect(() => {
     if (cart.length === 0) {
@@ -756,9 +900,11 @@ export function PosTerminal({
         setShowChangeModal(true);
       }
 
-      // Reset POS to new sale
+      // Reset POS to customer selection phase
+      setPhase("customer");
       setCart([]);
       setOwnerId("");
+      setCustomerSearch("");
       setPayments([]);
       setAppliedPromos([]);
       setTxDiscountValue("");
@@ -767,6 +913,8 @@ export function PosTerminal({
       setLoyaltyBalance(null);
       setGiftCardCode("");
       setSearch("");
+      setUnbilledServices([]);
+      setSelectedUnbilled(new Set());
 
       if (!hasCashChange && !(result.generatedGiftCards && result.generatedGiftCards.length > 0)) {
         router.refresh();
@@ -835,7 +983,176 @@ export function PosTerminal({
         </Link>
       </PageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      {/* ═══ PHASE: Customer Selection ═══ */}
+      {phase === "customer" && (
+        <Card className="max-w-lg mx-auto">
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            <div className="text-center space-y-1">
+              <User className="h-10 w-10 mx-auto text-muted-foreground" />
+              <h2 className="text-lg font-semibold">{t("selectCustomer")}</h2>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t("searchCustomer")}
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                className="pl-9"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-[320px] overflow-y-auto space-y-1">
+              {filteredOwners.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {t("noCustomerResults")}
+                </p>
+              ) : (
+                filteredOwners.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => selectCustomer(o.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors flex items-center gap-3"
+                    disabled={unbilledLoading}
+                  >
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                      {o.firstName[0]}{o.lastName[0]}
+                    </div>
+                    <span className="text-sm font-medium">{o.firstName} {o.lastName}</span>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="border-t pt-3">
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={selectWalkIn}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {t("walkIn")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══ PHASE: Unbilled Services Review ═══ */}
+      {phase === "services" && (
+        <Card className="max-w-lg mx-auto">
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setPhase("customer"); setOwnerId(""); }} className="hover:bg-muted rounded p-1">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div>
+                <h2 className="text-lg font-semibold">{t("unbilledServices")}</h2>
+                <p className="text-xs text-muted-foreground">{t("unbilledServicesDesc")}</p>
+              </div>
+            </div>
+
+            {/* Customer badge */}
+            {ownerId && (() => {
+              const owner = data.owners.find((o) => o.id === ownerId);
+              return owner ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50">
+                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                    {owner.firstName[0]}{owner.lastName[0]}
+                  </div>
+                  <span className="text-sm font-medium">{owner.firstName} {owner.lastName}</span>
+                </div>
+              ) : null;
+            })()}
+
+            {/* Completed services (auto-added) */}
+            {unbilledServices.filter((s) => s.autoAdd).length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">{t("completedServices")}</span>
+                {unbilledServices.filter((s) => s.autoAdd).map((svc) => (
+                  <label
+                    key={svc.appointmentId}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUnbilled.has(svc.appointmentId)}
+                      onChange={(e) => {
+                        setSelectedUnbilled((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(svc.appointmentId);
+                          else next.delete(svc.appointmentId);
+                          return next;
+                        });
+                      }}
+                      className="rounded"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{svc.serviceName}</p>
+                      <p className="text-xs text-muted-foreground">{t("petLabel")}: {svc.petName}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-[10px]">
+                        <Check className="h-3 w-3 mr-0.5" />
+                        {svc.status}
+                      </Badge>
+                      <span className="text-sm font-semibold">{formatCurrency(svc.price)}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* Pending/In-progress services (optional) */}
+            {unbilledServices.filter((s) => !s.autoAdd).length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-orange-700 dark:text-orange-400">{t("pendingServices")}</span>
+                {unbilledServices.filter((s) => !s.autoAdd).map((svc) => (
+                  <label
+                    key={svc.appointmentId}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer hover:bg-muted/30"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUnbilled.has(svc.appointmentId)}
+                      onChange={(e) => {
+                        setSelectedUnbilled((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(svc.appointmentId);
+                          else next.delete(svc.appointmentId);
+                          return next;
+                        });
+                      }}
+                      className="rounded"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{svc.serviceName}</p>
+                      <p className="text-xs text-muted-foreground">{t("petLabel")}: {svc.petName}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="secondary" className="text-[10px]">
+                        <Clock className="h-3 w-3 mr-0.5" />
+                        {svc.status}
+                      </Badge>
+                      <span className="text-sm font-semibold">{formatCurrency(svc.price)}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setSelectedUnbilled(new Set()); setPhase("terminal"); }}>
+                {t("skipServices")}
+              </Button>
+              <Button className="flex-1" onClick={confirmUnbilledServices}>
+                {t("continueToSale")} {selectedUnbilled.size > 0 && `(${selectedUnbilled.size})`}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══ PHASE: Terminal ═══ */}
+      {phase === "terminal" && (<div className="grid gap-4 lg:grid-cols-5">
         {/* ── Item Browser ── */}
         <div className="lg:col-span-3 space-y-3">
           <div className="relative">
@@ -1218,25 +1535,21 @@ export function PosTerminal({
             {/* ── Client ── */}
             {cart.length > 0 && (
               <div className="border-t pt-3 space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">
-                    {t("client")}
-                  </label>
-                  <Select
-                    value={ownerId}
-                    onValueChange={(v) => handleOwnerChange(v ?? "")}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder={t("noClient")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {data.owners.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
-                          {o.firstName} {o.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{t("customerSelected")}:</span>
+                    {ownerId ? (() => {
+                      const owner = data.owners.find((o) => o.id === ownerId);
+                      return owner ? (
+                        <span className="text-sm font-medium">{owner.firstName} {owner.lastName}</span>
+                      ) : null;
+                    })() : (
+                      <span className="text-sm text-muted-foreground">{t("walkIn")}</span>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={resetToCustomerPhase}>
+                    {t("changeCustomer")}
+                  </Button>
                 </div>
 
                 {/* ── Loyalty ── */}
@@ -1494,7 +1807,7 @@ export function PosTerminal({
             )}
           </CardContent>
         </Card>
-      </div>
+      </div>)}
 
       {/* ── Cash Denomination Calculator ── */}
       <Dialog open={showCashCalc} onOpenChange={(open) => { if (!open) { setShowCashCalc(false); clearDenominations(); } }}>
@@ -1598,7 +1911,7 @@ export function PosTerminal({
       <Dialog open={showGCCodes} onOpenChange={(open) => { if (!open) { setShowGCCodes(false); setGeneratedCodes([]); router.refresh(); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t("giftCardCodes")}</DialogTitle>
+            <DialogTitle>{t("gcActivated")}</DialogTitle>
             <DialogDescription>{t("giftCardGenerated")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
@@ -1698,6 +2011,45 @@ export function PosTerminal({
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Gift Card Code Input Dialog (when selling a gift card) ── */}
+      <Dialog open={showGCInput} onOpenChange={(open) => { if (!open) { setShowGCInput(false); setGcInputProduct(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("gcEnterCode")}</DialogTitle>
+            <DialogDescription>
+              {gcInputProduct && `${gcInputProduct.name} — ${formatCurrency(Number(gcInputProduct.amount))}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>{t("gcCardNumber")} *</Label>
+              <Input
+                className="font-mono text-center text-lg tracking-wider"
+                placeholder="GC-XXXX-XXXX"
+                autoFocus
+                value={gcInputCode}
+                onChange={(e) => {
+                  setGcInputCode(e.target.value.toUpperCase());
+                  setGcInputError("");
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") confirmGiftCardCode(); }}
+              />
+            </div>
+            {gcInputError && (
+              <p className="text-xs text-destructive">{gcInputError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setShowGCInput(false); setGcInputProduct(null); }}>
+              {tc("cancel")}
+            </Button>
+            <Button size="sm" onClick={confirmGiftCardCode} disabled={!gcInputCode.trim()}>
+              {t("gcConfirmAdd")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

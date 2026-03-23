@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { updatePet, deletePet } from "../actions";
 
 type Pet = {
@@ -25,6 +26,7 @@ type Pet = {
   dateOfBirth: Date | null;
   weight: number | null;
   color: string | null;
+  size: string | null;
   microchipId: string | null;
   allergies: string | null;
   notes: string | null;
@@ -36,6 +38,7 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
   const t = useTranslations("pets");
   const tc = useTranslations("common");
   const tf = useTranslations("form");
+  const { formatDate } = useFormatDate();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -121,6 +124,18 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
                   <Input name="weight" type="number" step="0.01" defaultValue={pet.weight ?? ""} />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>{t("size")}</Label>
+                  <Select name="size" defaultValue={pet.size ?? ""}>
+                    <SelectTrigger><SelectValue placeholder={t("sizeLabels.selectSize")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SMALL">{t("sizeLabels.SMALL")}</SelectItem>
+                      <SelectItem value="MEDIUM">{t("sizeLabels.MEDIUM")}</SelectItem>
+                      <SelectItem value="LARGE">{t("sizeLabels.LARGE")}</SelectItem>
+                      <SelectItem value="XL">{t("sizeLabels.XL")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label>{t("color")}</Label>
                   <Input name="color" defaultValue={pet.color ?? ""} />
                 </div>
@@ -148,8 +163,9 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
               <div><span className="text-muted-foreground">{t("species")}:</span> <Badge variant="secondary">{pet.species}</Badge></div>
               <div><span className="text-muted-foreground">{t("breed")}:</span> {pet.breed || "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("sex")}:</span> {pet.sex}</div>
-              <div><span className="text-muted-foreground">{t("dateOfBirth")}:</span> {pet.dateOfBirth ? new Date(pet.dateOfBirth).toLocaleDateString("es-PA") : "\u2014"}</div>
+              <div><span className="text-muted-foreground">{t("dateOfBirth")}:</span> {pet.dateOfBirth ? formatDate(pet.dateOfBirth) : "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("weight")}:</span> {pet.weight ? `${pet.weight} kg` : "\u2014"}</div>
+              <div><span className="text-muted-foreground">{t("size")}:</span> {pet.size ? t(`sizeLabels.${pet.size}`) : "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("color")}:</span> {pet.color || "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("microchip")}:</span> {pet.microchipId || "\u2014"}</div>
               {pet.allergies && <div className="sm:col-span-2"><span className="text-muted-foreground">{t("allergies")}:</span> {pet.allergies}</div>}

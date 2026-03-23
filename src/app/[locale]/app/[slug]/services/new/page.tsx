@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function NewServicePage() {
   const ts = useTranslations("services");
   const ta = useTranslations("appointments");
   const tf = useTranslations("form");
+  const [type, setType] = useState("CONSULTATION");
 
   return (
     <div className="space-y-6">
@@ -34,8 +36,8 @@ export default function NewServicePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{ta("type")} *</Label>
-                <Select name="type" defaultValue="CONSULTATION">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select name="type" value={type} onValueChange={(v) => v && setType(v)}>
+                  <SelectTrigger><SelectValue>{ts(`typeLabels.${type}`)}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CONSULTATION">{ts("typeLabels.CONSULTATION")}</SelectItem>
                     <SelectItem value="VACCINATION">{ts("typeLabels.VACCINATION")}</SelectItem>

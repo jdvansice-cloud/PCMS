@@ -109,7 +109,28 @@
     "recentActivity": "Actividad Reciente",
     "noAppointments": "No hay citas programadas para hoy",
     "noActivity": "Sin actividad reciente",
-    "viewAll": "Ver todas"
+    "viewAll": "Ver todas",
+    "actionLabels": {
+      "CREATE": "creó",
+      "UPDATE": "actualizó",
+      "DELETE": "eliminó",
+      "SOFT_DELETE": "desactivó"
+    },
+    "entityLabels": {
+      "Owner": "cliente",
+      "Pet": "mascota",
+      "Appointment": "cita",
+      "Sale": "venta",
+      "Service": "servicio",
+      "Product": "producto",
+      "Organization": "clínica",
+      "BusinessHours": "horario",
+      "Branding": "marca",
+      "GroomingSession": "sesión de peluquería",
+      "Kennel": "jaula",
+      "User": "usuario",
+      "Role": "rol"
+    }
   },
   "clients": {
     "title": "Clientes",
@@ -153,6 +174,13 @@
       "MALE": "Macho",
       "FEMALE": "Hembra",
       "UNKNOWN": "Desconocido"
+    },
+    "sizeLabels": {
+      "selectSize": "Seleccionar tamaño",
+      "SMALL": "Pequeño",
+      "MEDIUM": "Mediano",
+      "LARGE": "Grande",
+      "XL": "Extra Grande"
     }
   },
   "appointments": {
@@ -257,7 +285,28 @@
     "giftCardPaymentLimit": "Pago con tarjeta de regalo limitado a {amount}",
     "cannotPayGiftCardWithGiftCard": "No se puede pagar la compra de tarjetas de regalo con tarjeta de regalo",
     "giftCardGenerated": "Tarjeta de regalo creada",
-    "giftCardCodes": "Códigos de Tarjetas de Regalo"
+    "giftCardCodes": "Códigos de Tarjetas de Regalo",
+    "gcEnterCode": "Ingresar Código de Tarjeta",
+    "gcCardNumber": "Número o código de la tarjeta",
+    "gcConfirmAdd": "Agregar al Carrito",
+    "gcCodeRequired": "Debe ingresar el código de la tarjeta",
+    "gcCodeDuplicate": "Esta tarjeta ya está en el carrito",
+    "gcCodeAlreadyActive": "Esta tarjeta ya está activa con saldo",
+    "gcActivated": "Tarjetas de Regalo Activadas",
+    "selectCustomer": "Seleccionar Cliente",
+    "walkIn": "Cliente ocasional",
+    "searchCustomer": "Buscar por nombre...",
+    "noCustomerResults": "No se encontraron clientes",
+    "customerSelected": "Cliente",
+    "changeCustomer": "Cambiar",
+    "unbilledServices": "Servicios sin cobrar",
+    "unbilledServicesDesc": "Estos servicios están listos para cobrar",
+    "completedServices": "Completados (agregados automáticamente)",
+    "pendingServices": "Pendientes / En progreso (opcionales)",
+    "continueToSale": "Continuar a venta",
+    "skipServices": "Omitir",
+    "petLabel": "Mascota",
+    "noUnbilledServices": "No hay servicios sin cobrar para hoy"
   },
   "inventory": {
     "title": "Inventario",
@@ -610,6 +659,14 @@
     "giftCardTxDate": "Fecha",
     "giftCardTxType": "Tipo",
     "giftCardTxAmount": "Monto",
+    "giftCardTxBalance": "Saldo",
+    "giftCardTxBy": "Por",
+    "giftCardTxTypeLabels": {
+      "PURCHASE": "Compra",
+      "TOP_UP": "Recarga",
+      "REDEMPTION": "Uso",
+      "REFUND": "Reembolso"
+    },
     "searchPromotions": "Buscar promociones...",
     "promoValuePercent": "Porcentaje de descuento (%)",
     "promoValueDollar": "Monto de descuento ($)",
@@ -749,7 +806,8 @@
     "sizeLabels": {
       "SMALL": "Pequeño",
       "MEDIUM": "Mediano",
-      "LARGE": "Grande"
+      "LARGE": "Grande",
+      "XL": "Extra Grande"
     }
   },
   "booking": {

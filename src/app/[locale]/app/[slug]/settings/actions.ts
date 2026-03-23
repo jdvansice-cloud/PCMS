@@ -900,6 +900,7 @@ export async function getGiftCard(id: string) {
         orderBy: { createdAt: "desc" },
         include: {
           createdBy: { select: { firstName: true, lastName: true } },
+          sale: { select: { owner: { select: { firstName: true, lastName: true } } } },
         },
       },
     },

@@ -54,6 +54,7 @@ export function AppointmentDetail({
   const tc = useTranslations("common");
   const ta = useTranslations("appointments");
   const tf = useTranslations("form");
+  const tp = useTranslations("pets");
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const base = `/app/${slug}/appointments`;
@@ -105,7 +106,7 @@ export function AppointmentDetail({
                 >
                   {a.pet.name}
                 </Link>{" "}
-                ({a.pet.species})
+                ({tp(`speciesLabels.${a.pet.species}`)})
               </div>
               <div>
                 <span className="text-muted-foreground">{tc("date")}:</span>{" "}
@@ -162,7 +163,7 @@ export function AppointmentDetail({
               <label className="text-xs text-muted-foreground">{tf("changeStatus")}</label>
               <Select value={a.status} onValueChange={handleStatusChange} disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{ta(`statusLabels.${a.status}`)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SCHEDULED">{ta("statusLabels.SCHEDULED")}</SelectItem>

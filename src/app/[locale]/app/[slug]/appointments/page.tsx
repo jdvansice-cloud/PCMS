@@ -84,7 +84,7 @@ export default async function AppointmentsPage({
                         </p>
                       </div>
                       <Badge className={`text-xs ${STATUS_COLORS[a.status] ?? ""}`}>
-                        {a.status}
+                        {t(`statusLabels.${a.status}`)}
                       </Badge>
                     </div>
                   </CardContent>
@@ -119,10 +119,10 @@ export default async function AppointmentsPage({
                     <TableCell className="hidden md:table-cell">
                       {a.vet ? `${a.vet.firstName} ${a.vet.lastName}` : "—"}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{a.type}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{t(`typeLabels.${a.type}`)}</TableCell>
                     <TableCell>
                       <Badge className={`text-xs ${STATUS_COLORS[a.status] ?? ""}`}>
-                        {a.status}
+                        {t(`statusLabels.${a.status}`)}
                       </Badge>
                     </TableCell>
                   </TableRow>

@@ -35,9 +35,14 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
   const tc = useTranslations("common");
   const base = `/app/${slug}/appointments`;
   const [selectedOwnerId, setSelectedOwnerId] = useState("");
+  const [selectedPetId, setSelectedPetId] = useState("");
+  const [selectedVetId, setSelectedVetId] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [selectedType, setSelectedType] = useState("CONSULTATION");
 
   const selectedOwner = data.owners.find((o) => o.id === selectedOwnerId);
+  const selectedPet = selectedOwner?.pets.find((p) => p.id === selectedPetId);
+  const selectedVet = data.vets.find((v) => v.id === selectedVetId);
   const selectedService = data.services.find((s) => s.id === selectedServiceId);
 
   return (
@@ -53,11 +58,15 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 <Select
                   name="ownerId"
                   value={selectedOwnerId}
-                  onValueChange={(v) => setSelectedOwnerId(v ?? "")}
+                  onValueChange={(v) => { if (v) { setSelectedOwnerId(v); setSelectedPetId(""); } }}
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectClient")} />
+                    <SelectValue placeholder={t("selectClient")}>
+                      {selectedOwnerId
+                        ? (() => { const o = data.owners.find((o) => o.id === selectedOwnerId); return o ? `${o.firstName} ${o.lastName}` : t("selectClient"); })()
+                        : t("selectClient")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {data.owners.map((o) => (
@@ -70,9 +79,11 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
               </div>
               <div className="space-y-1.5">
                 <Label>{t("pet")} *</Label>
-                <Select name="petId" required disabled={!selectedOwnerId}>
+                <Select name="petId" value={selectedPetId} onValueChange={(v) => v && setSelectedPetId(v)} required disabled={!selectedOwnerId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectPet")} />
+                    <SelectValue placeholder={t("selectPet")}>
+                      {selectedPet ? selectedPet.name : t("selectPet")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {selectedOwner?.pets.map((p) => (
@@ -85,9 +96,11 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
               </div>
               <div className="space-y-1.5">
                 <Label>{t("vet")}</Label>
-                <Select name="vetId">
+                <Select name="vetId" value={selectedVetId} onValueChange={(v) => v && setSelectedVetId(v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectVet")} />
+                    <SelectValue placeholder={t("selectVet")}>
+                      {selectedVet ? `${selectedVet.firstName} ${selectedVet.lastName}` : t("selectVet")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {data.vets.map((v) => (
@@ -103,10 +116,18 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                 <Select
                   name="serviceId"
                   value={selectedServiceId}
-                  onValueChange={(v) => setSelectedServiceId(v ?? "")}
+                  onValueChange={(v) => {
+                    if (v) {
+                      setSelectedServiceId(v);
+                      const svc = data.services.find((s) => s.id === v);
+                      if (svc) setSelectedType(svc.type);
+                    }
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectService")} />
+                    <SelectValue placeholder={t("selectService")}>
+                      {selectedService ? `${selectedService.name} (${selectedService.durationMin} min)` : t("selectService")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {data.services.map((s) => (
@@ -119,9 +140,9 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
               </div>
               <div className="space-y-1.5">
                 <Label>{t("type")} *</Label>
-                <Select name="type" defaultValue={selectedService?.type ?? "CONSULTATION"}>
+                <Select name="type" value={selectedType} onValueChange={(v) => v && setSelectedType(v)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{t(`typeLabels.${selectedType}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CONSULTATION">{t("typeLabels.CONSULTATION")}</SelectItem>

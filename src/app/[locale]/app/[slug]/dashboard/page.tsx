@@ -86,24 +86,6 @@ const statusColors: Record<string, string> = {
   NO_SHOW: "bg-[var(--status-no-show)]/10 text-[var(--status-no-show)]",
 };
 
-const actionLabels: Record<string, string> = {
-  CREATE: "creó",
-  UPDATE: "actualizó",
-  DELETE: "eliminó",
-  SOFT_DELETE: "desactivó",
-};
-
-const entityLabels: Record<string, string> = {
-  OWNER: "cliente",
-  PET: "mascota",
-  APPOINTMENT: "cita",
-  SALE: "venta",
-  SERVICE: "servicio",
-  PRODUCT: "producto",
-  ORGANIZATION: "clínica",
-  BUSINESS_HOURS: "horario",
-  BRANDING: "marca",
-};
 
 export default async function DashboardPage({
   params,
@@ -115,6 +97,7 @@ export default async function DashboardPage({
   const data = await getDashboardData(organizationId);
   const t = await getTranslations("dashboard");
   const ts = await getTranslations("dashboard.stats");
+  const ta = await getTranslations("appointments");
 
   const now = new Date();
   const hour = now.getHours();
@@ -270,14 +253,14 @@ export default async function DashboardPage({
                           minute: "2-digit",
                         })}
                         {apt.vet && ` · Dr. ${apt.vet.firstName}`}
-                        {apt.type && ` · ${apt.type}`}
+                        {apt.type && ` · ${ta(`typeLabels.${apt.type}`)}`}
                       </p>
                     </div>
                     <Badge
                       variant="secondary"
                       className={`text-[10px] shrink-0 ${statusColors[apt.status] || ""}`}
                     >
-                      {apt.status}
+                      {ta(`statusLabels.${apt.status}`)}
                     </Badge>
                   </Link>
                 ))}
@@ -325,8 +308,8 @@ export default async function DashboardPage({
                         <span className="font-medium">
                           {log.user?.firstName} {log.user?.lastName}
                         </span>{" "}
-                        {actionLabels[log.action] || log.action}{" "}
-                        {entityLabels[log.entityType] || log.entityType}
+                        {t(`actionLabels.${log.action}`)}{" "}
+                        {t(`entityLabels.${log.entityType}`)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(log.createdAt).toLocaleString("es-PA", {

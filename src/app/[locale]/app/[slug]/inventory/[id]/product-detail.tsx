@@ -47,6 +47,7 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editCategory, setEditCategory] = useState(p.category);
   const base = `/app/${slug}/inventory`;
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -97,9 +98,9 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
                 </div>
                 <div className="space-y-1.5">
                   <Label>{ti("category")}</Label>
-                  <Select name="category" defaultValue={p.category}>
+                  <Select name="category" value={editCategory} onValueChange={(v) => v && setEditCategory(v)}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue>{ti(`categoryLabels.${editCategory}`)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="FOOD">{ti("categoryLabels.FOOD")}</SelectItem>
