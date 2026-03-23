@@ -40,7 +40,8 @@ type ReceptionData = {
     lastName: string;
     pets: { id: string; name: string; species: string; breed: string | null; size: string | null }[];
   }[];
-  kennels: { id: string; name: string; size: string }[];
+  kennels: { id: string; name: string; size: string; isAvailable: boolean }[];
+  occupiedKennelIds: string[];
   groomers: { id: string; firstName: string; lastName: string }[];
   vets: { id: string; firstName: string; lastName: string }[];
   services: { id: string; name: string; type: string; durationMin: number }[];
@@ -91,10 +92,25 @@ export function ReceptionClient({
   const selectedPet = selectedOwner?.pets.find((p) => p.id === selectedPetId);
   const petSize = selectedPet?.size || "MEDIUM";
 
-  // Filter kennels by pet size (same or larger)
-  const compatibleKennels = data.kennels.filter(
-    (k) => (SIZE_ORDER[k.size] ?? 0) >= (SIZE_ORDER[petSize] ?? 1)
+  // All kennels grouped by size for tile display
+  const occupiedSet = new Set(data.occupiedKennelIds);
+  const kennelsBySize: Record<string, typeof data.kennels> = {};
+  for (const k of data.kennels) {
+    const key = k.size;
+    if (!kennelsBySize[key]) kennelsBySize[key] = [];
+    kennelsBySize[key].push(k);
+  }
+  const sizeOrder = ["SMALL", "MEDIUM", "LARGE", "XL"];
+  const sortedSizeKeys = Object.keys(kennelsBySize).sort(
+    (a, b) => (sizeOrder.indexOf(a) - sizeOrder.indexOf(b))
   );
+
+  function isKennelAvailable(k: { id: string; size: string; isAvailable: boolean }) {
+    if (!k.isAvailable) return false;
+    if (occupiedSet.has(k.id)) return false;
+    if ((SIZE_ORDER[k.size] ?? 0) < (SIZE_ORDER[petSize] ?? 1)) return false;
+    return true;
+  }
 
   // Filter grooming services
   const groomingServiceOptions = data.services.filter(
@@ -406,27 +422,46 @@ export function ReceptionClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>{t("selectKennel")}</Label>
-                      <Select value={selectedKennelId} onValueChange={(v) => setSelectedKennelId(v ?? "")}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("selectKennel")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {compatibleKennels.length === 0 ? (
-                            <div className="p-2 text-sm text-muted-foreground">
-                              {t("noAvailableKennels")}
-                            </div>
-                          ) : (
-                            compatibleKennels.map((k) => (
-                              <SelectItem key={k.id} value={k.id}>
-                                {k.name} ({k.size})
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  </div>
+                  {/* Kennel tile grid */}
+                  <div className="space-y-3">
+                    <Label>{t("selectKennel")}</Label>
+                    {sortedSizeKeys.map((size) => (
+                      <div key={size} className="space-y-1.5">
+                        <h4 className="text-xs font-medium text-muted-foreground">{size}</h4>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                          {kennelsBySize[size].map((kennel) => {
+                            const available = isKennelAvailable(kennel);
+                            const selected = selectedKennelId === kennel.id;
+                            return (
+                              <Card
+                                key={kennel.id}
+                                className={`cursor-pointer transition-all ${
+                                  selected
+                                    ? "border-primary bg-primary/10 ring-2 ring-primary"
+                                    : available
+                                    ? "border-green-300 bg-green-50 hover:border-green-400 hover:shadow-sm"
+                                    : "border-muted bg-muted/40 opacity-50 cursor-not-allowed"
+                                }`}
+                                onClick={() => {
+                                  if (!available) return;
+                                  setSelectedKennelId(selected ? "" : kennel.id);
+                                }}
+                              >
+                                <CardContent className="p-2 text-center">
+                                  <p className="text-xs font-semibold">{kennel.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {available
+                                      ? selected ? t("selected") : t("available")
+                                      : occupiedSet.has(kennel.id) ? t("occupied") : t("tooSmall")}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   {/* Grooming services multi-select */}
                   <div className="space-y-1.5">

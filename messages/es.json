@@ -797,7 +797,11 @@
     "petSize": "Tamaño de Mascota",
     "scheduled": "Programada",
     "time": "Hora",
-    "today": "Hoy"
+    "today": "Hoy",
+    "selected": "Seleccionada",
+    "available": "Disponible",
+    "occupied": "Ocupada",
+    "tooSmall": "Muy pequeña"
   },
   "booking": {
     "title": "Reservar Cita de Peluquería",

@@ -103,13 +103,13 @@ export async function getTodaysScheduledAppointments() {
     },
     select: { kennelId: true },
   });
-  const occupiedIds = new Set(occupiedKennels.map((s) => s.kennelId!));
-  const availableKennels = kennels.filter((k) => !occupiedIds.has(k.id));
+  const occupiedIds = occupiedKennels.map((s) => s.kennelId!);
 
   return {
     appointments,
     owners,
-    kennels: availableKennels,
+    kennels,
+    occupiedKennelIds: occupiedIds,
     groomers,
     vets,
     services,

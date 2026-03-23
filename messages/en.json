@@ -796,7 +796,11 @@
     "petSize": "Pet Size",
     "scheduled": "Scheduled",
     "time": "Time",
-    "today": "Today"
+    "today": "Today",
+    "selected": "Selected",
+    "available": "Available",
+    "occupied": "Occupied",
+    "tooSmall": "Too small"
   },
   "booking": {
     "title": "Book Grooming Appointment",
