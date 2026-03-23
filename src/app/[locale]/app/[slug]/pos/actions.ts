@@ -867,3 +867,215 @@ export async function getOwnerLoyaltyBalance(ownerId: string) {
   return lastEntry ? Number(lastEntry.balanceAfter) : 0;
 }
 
+// ═══════════════════════════════════════════════════════════
+//  END OF DAY REPORT
+// ═══════════════════════════════════════════════════════════
+
+export type EndOfDayReport = {
+  date: string;
+  branchName: string;
+  organizationName: string;
+  closedBy: string;
+  closedAt: string;
+  salesCount: number;
+  refundsCount: number;
+  // Totals
+  grossSales: number;
+  totalDiscounts: number;
+  totalItbms: number;
+  netSales: number;
+  totalRefunds: number;
+  // By payment method
+  paymentBreakdown: { method: string; count: number; total: number }[];
+  // By category
+  productSales: { name: string; qty: number; total: number }[];
+  serviceSales: { name: string; qty: number; total: number }[];
+  giftCardSales: { count: number; total: number };
+  giftCardRedemptions: { count: number; total: number };
+  // Cash reconciliation
+  expectedCash: number;
+  // Top sellers
+  topItems: { name: string; qty: number; revenue: number }[];
+  // Individual sales
+  sales: {
+    saleNumber: number;
+    time: string;
+    customer: string | null;
+    items: number;
+    total: number;
+    payments: { method: string; amount: number }[];
+  }[];
+};
+
+export async function getEndOfDayReport(date?: string): Promise<EndOfDayReport> {
+  const { user, organizationId } = await getCurrentUser();
+
+  const targetDate = date ? new Date(date) : new Date();
+  const dayStart = new Date(targetDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(targetDate);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  const [org, branch, sales, refunds] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    }),
+    prisma.branch.findFirst({
+      where: { organizationId, isMain: true },
+      select: { name: true },
+    }),
+    prisma.sale.findMany({
+      where: {
+        organizationId,
+        createdAt: { gte: dayStart, lte: dayEnd },
+        status: { in: ["COMPLETED", "PARTIAL"] },
+      },
+      include: {
+        owner: { select: { firstName: true, lastName: true } },
+        lines: {
+          select: {
+            description: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            subtotal: true,
+            itbms: true,
+            discountAmount: true,
+            productId: true,
+            serviceId: true,
+            giftCardProductId: true,
+          },
+        },
+        payments: { select: { paymentMethod: true, amount: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.refund.findMany({
+      where: {
+        sale: { organizationId },
+        createdAt: { gte: dayStart, lte: dayEnd },
+      },
+      select: { amount: true },
+    }),
+  ]);
+
+  // Gift card redemptions for the day
+  const gcRedemptions = await prisma.giftCardTx.findMany({
+    where: {
+      giftCard: { organizationId },
+      type: "REDEMPTION",
+      createdAt: { gte: dayStart, lte: dayEnd },
+    },
+    select: { amount: true },
+  });
+
+  // Aggregate totals
+  let grossSales = 0;
+  let totalDiscounts = 0;
+  let totalItbms = 0;
+  let netSales = 0;
+
+  const paymentMap = new Map<string, { count: number; total: number }>();
+  const itemMap = new Map<string, { name: string; qty: number; revenue: number }>();
+  const productMap = new Map<string, { name: string; qty: number; total: number }>();
+  const serviceMap = new Map<string, { name: string; qty: number; total: number }>();
+  let gcSalesCount = 0;
+  let gcSalesTotal = 0;
+
+  const saleList: EndOfDayReport["sales"] = [];
+
+  for (const sale of sales) {
+    const saleTotal = Number(sale.total);
+    const saleDiscount = sale.discountAmount ? Number(sale.discountAmount) : 0;
+    const saleItbms = Number(sale.itbms);
+    const saleSubtotal = Number(sale.subtotal);
+
+    grossSales += saleSubtotal + saleItbms;
+    totalDiscounts += saleDiscount;
+    totalItbms += saleItbms;
+    netSales += saleTotal;
+
+    // Payment breakdown
+    for (const p of sale.payments) {
+      const existing = paymentMap.get(p.paymentMethod) ?? { count: 0, total: 0 };
+      existing.count++;
+      existing.total += Number(p.amount);
+      paymentMap.set(p.paymentMethod, existing);
+    }
+
+    // Line items
+    for (const line of sale.lines) {
+      const key = line.description;
+      const qty = line.quantity;
+      const revenue = Number(line.lineTotal);
+
+      const existing = itemMap.get(key) ?? { name: key, qty: 0, revenue: 0 };
+      existing.qty += qty;
+      existing.revenue += revenue;
+      itemMap.set(key, existing);
+
+      if (line.giftCardProductId) {
+        gcSalesCount += qty;
+        gcSalesTotal += revenue;
+      } else if (line.productId) {
+        const pe = productMap.get(key) ?? { name: key, qty: 0, total: 0 };
+        pe.qty += qty;
+        pe.total += revenue;
+        productMap.set(key, pe);
+      } else if (line.serviceId) {
+        const se = serviceMap.get(key) ?? { name: key, qty: 0, total: 0 };
+        se.qty += qty;
+        se.total += revenue;
+        serviceMap.set(key, se);
+      }
+    }
+
+    saleList.push({
+      saleNumber: sale.saleNumber,
+      time: sale.createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      customer: sale.owner ? `${sale.owner.firstName} ${sale.owner.lastName}` : null,
+      items: sale.lines.reduce((s, l) => s + l.quantity, 0),
+      total: saleTotal,
+      payments: sale.payments.map((p) => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount),
+      })),
+    });
+  }
+
+  const totalRefunds = refunds.reduce((s, r) => s + Number(r.amount), 0);
+  const expectedCash = paymentMap.get("CASH")?.total ?? 0;
+
+  const gcRedemptionTotal = gcRedemptions.reduce((s, tx) => s + Math.abs(Number(tx.amount)), 0);
+
+  // Top items sorted by revenue
+  const topItems = [...itemMap.values()]
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  return {
+    date: dayStart.toISOString().split("T")[0],
+    branchName: branch?.name ?? "Main",
+    organizationName: org?.name ?? "",
+    closedBy: `${user.firstName} ${user.lastName}`,
+    closedAt: new Date().toISOString(),
+    salesCount: sales.length,
+    refundsCount: refunds.length,
+    grossSales,
+    totalDiscounts,
+    totalItbms,
+    netSales,
+    totalRefunds,
+    paymentBreakdown: [...paymentMap.entries()]
+      .map(([method, data]) => ({ method, ...data }))
+      .sort((a, b) => b.total - a.total),
+    productSales: [...productMap.values()].sort((a, b) => b.total - a.total),
+    serviceSales: [...serviceMap.values()].sort((a, b) => b.total - a.total),
+    giftCardSales: { count: gcSalesCount, total: gcSalesTotal },
+    giftCardRedemptions: { count: gcRedemptions.length, total: gcRedemptionTotal },
+    expectedCash,
+    topItems,
+    sales: saleList,
+  };
+}

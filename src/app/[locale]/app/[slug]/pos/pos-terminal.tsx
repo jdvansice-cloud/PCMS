@@ -988,11 +988,18 @@ export function PosTerminal({
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader title={t("title")}>
-        <Link href={`${base}/sales`}>
-          <Button variant="outline" size="sm">
-            {t("salesHistory")}
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`${base}/closing`}>
+            <Button variant="outline" size="sm">
+              {t("closingReport")}
+            </Button>
+          </Link>
+          <Link href={`${base}/sales`}>
+            <Button variant="outline" size="sm">
+              {t("salesHistory")}
+            </Button>
+          </Link>
+        </div>
       </PageHeader>
 
       {/* ═══ PHASE: Customer Selection ═══ */}
