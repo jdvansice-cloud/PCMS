@@ -30,7 +30,6 @@ type Pet = {
   microchipId: string | null;
   allergies: string | null;
   notes: string | null;
-  size: string | null;
   owner: { id: string; firstName: string; lastName: string };
 };
 
