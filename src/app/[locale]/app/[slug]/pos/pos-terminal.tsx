@@ -842,32 +842,30 @@ export function PosTerminal({
   }
 
   function handleQuickPay(method: PaymentMethod) {
+    const amountToPay = payments.length === 0
+      ? finalTotal - loyaltyRedeemAmount
+      : remainingToPay;
+    if (amountToPay <= 0.01 && payments.length > 0) return;
+
     if (method === "CASH") {
-      // Open cash calculator
       setCashDenominations({});
       setShowCashCalc(true);
       return;
     }
-    if (payments.length === 0) {
-      // First payment — pay full amount
-      setPayments([
-        {
-          id: `pay-${++paymentIdCounter}`,
-          method,
-          amount: finalTotal - loyaltyRedeemAmount,
-        },
-      ]);
-    } else if (remainingToPay > 0.01) {
-      // Split payment — add remaining amount
-      setPayments((prev) => [
-        ...prev,
-        {
-          id: `pay-${++paymentIdCounter}`,
-          method,
-          amount: remainingToPay,
-        },
-      ]);
-    }
+    setPayments((prev) => [
+      ...prev,
+      {
+        id: `pay-${++paymentIdCounter}`,
+        method,
+        amount: Math.max(0.01, amountToPay),
+      },
+    ]);
+  }
+
+  function updatePaymentAmount(id: string, newAmount: number) {
+    setPayments((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, amount: Math.max(0, newAmount) } : p)),
+    );
   }
 
   // ── Charge ──
@@ -1683,7 +1681,8 @@ export function PosTerminal({
                       ] as const
                     ).map(([method, label]) => {
                       const hasPayment = payments.some((p) => p.method === method);
-                      const fullyPaid = payments.length > 0 && remainingToPay <= 0.01;
+                      const noBalance = payments.length > 0 && remainingToPay <= 0.01;
+                      const maxPayments = payments.length >= 4;
                       return (
                         <Button
                           key={method}
@@ -1691,7 +1690,7 @@ export function PosTerminal({
                           size="sm"
                           className="h-8 text-xs gap-1"
                           onClick={() => handleQuickPay(method as PaymentMethod)}
-                          disabled={fullyPaid && !hasPayment}
+                          disabled={noBalance || maxPayments}
                         >
                           {method === "CARD" ? (
                             <CreditCard className="h-3 w-3" />
@@ -1702,15 +1701,15 @@ export function PosTerminal({
                     })}
                   </div>
 
-                  {/* Split payment section */}
+                  {/* Payment lines */}
                   {payments.length > 0 && (
                     <div className="space-y-1">
                       {payments.map((p) => (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1"
+                          className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1 gap-2"
                         >
-                          <span>
+                          <span className="shrink-0">
                             {methodLabel(p.method)}
                             {p.giftCardCode && (
                               <span className="font-mono ml-1 text-muted-foreground">
@@ -1719,9 +1718,20 @@ export function PosTerminal({
                             )}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-medium">
-                              {formatCurrency(p.amount)}
-                            </span>
+                            {p.method === "GIFT_CARD" ? (
+                              <span className="font-medium">
+                                {formatCurrency(p.amount)}
+                              </span>
+                            ) : (
+                              <Input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                className="h-6 text-xs w-20 text-right font-medium"
+                                value={p.amount || ""}
+                                onChange={(e) => updatePaymentAmount(p.id, parseFloat(e.target.value) || 0)}
+                              />
+                            )}
                             <button
                               onClick={() => removePayment(p.id)}
                               className="text-muted-foreground hover:text-destructive"
