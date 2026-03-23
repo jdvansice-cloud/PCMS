@@ -25,6 +25,7 @@ export default function NewServicePage() {
   const tf = useTranslations("form");
   const tp = useTranslations("pets");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [type, setType] = useState("CONSULTATION");
 
   function toggleSize(size: string) {
     setSelectedSizes((prev) =>
@@ -52,8 +53,8 @@ export default function NewServicePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{ta("type")} *</Label>
-                <Select name="type" defaultValue="CONSULTATION">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select name="type" value={type} onValueChange={(v) => v && setType(v)}>
+                  <SelectTrigger><SelectValue>{ts(`typeLabels.${type}`)}</SelectValue></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CONSULTATION">{ts("typeLabels.CONSULTATION")}</SelectItem>
                     <SelectItem value="VACCINATION">{ts("typeLabels.VACCINATION")}</SelectItem>

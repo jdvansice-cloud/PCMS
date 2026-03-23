@@ -781,8 +781,12 @@ export function GiftCardsClient({
                           <TableRow>
                             <TableHead>{t("giftCardTxDate")}</TableHead>
                             <TableHead>{t("giftCardTxType")}</TableHead>
+                            <TableHead>{t("giftCardTxBy")}</TableHead>
                             <TableHead className="text-right">
                               {t("giftCardTxAmount")}
+                            </TableHead>
+                            <TableHead className="text-right">
+                              {t("giftCardTxBalance")}
                             </TableHead>
                           </TableRow>
                         </TableHeader>
@@ -793,10 +797,22 @@ export function GiftCardsClient({
                                 {formatDate(tx.createdAt)}
                               </TableCell>
                               <TableCell className="text-xs">
-                                {tx.type}
+                                <Badge variant="outline" className="text-[10px]">
+                                  {t(`giftCardTxTypeLabels.${tx.type}`)}
+                                </Badge>
                               </TableCell>
-                              <TableCell className="text-xs text-right">
-                                {formatCurrency(Number(tx.amount))}
+                              <TableCell className="text-xs">
+                                {tx.type === "REDEMPTION" && tx.sale?.owner
+                                  ? `${tx.sale.owner.firstName} ${tx.sale.owner.lastName}`
+                                  : tx.createdBy
+                                    ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}`
+                                    : "—"}
+                              </TableCell>
+                              <TableCell className={`text-xs text-right ${tx.type === "REDEMPTION" ? "text-destructive" : "text-green-600"}`}>
+                                {tx.type === "REDEMPTION" ? "-" : "+"}{formatCurrency(Math.abs(Number(tx.amount)))}
+                              </TableCell>
+                              <TableCell className="text-xs text-right font-medium">
+                                {formatCurrency(Number(tx.balanceAfter))}
                               </TableCell>
                             </TableRow>
                           ))}

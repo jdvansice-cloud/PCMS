@@ -110,7 +110,28 @@
     "recentActivity": "Recent Activity",
     "noAppointments": "No appointments scheduled for today",
     "noActivity": "No recent activity",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "actionLabels": {
+      "CREATE": "created",
+      "UPDATE": "updated",
+      "DELETE": "deleted",
+      "SOFT_DELETE": "deactivated"
+    },
+    "entityLabels": {
+      "Owner": "client",
+      "Pet": "pet",
+      "Appointment": "appointment",
+      "Sale": "sale",
+      "Service": "service",
+      "Product": "product",
+      "Organization": "clinic",
+      "BusinessHours": "business hours",
+      "Branding": "branding",
+      "GroomingSession": "grooming session",
+      "Kennel": "kennel",
+      "User": "user",
+      "Role": "role"
+    }
   },
   "clients": {
     "title": "Clients",
@@ -281,7 +302,28 @@
     "giftCardPaymentLimit": "Gift card payment limited to {amount}",
     "cannotPayGiftCardWithGiftCard": "Gift card purchases cannot be paid with gift card",
     "giftCardGenerated": "Gift card created",
-    "giftCardCodes": "Gift Card Codes"
+    "giftCardCodes": "Gift Card Codes",
+    "gcEnterCode": "Enter Card Code",
+    "gcCardNumber": "Card number or code",
+    "gcConfirmAdd": "Add to Cart",
+    "gcCodeRequired": "Card code is required",
+    "gcCodeDuplicate": "This card is already in the cart",
+    "gcCodeAlreadyActive": "This card is already active with balance",
+    "gcActivated": "Gift Cards Activated",
+    "selectCustomer": "Select Customer",
+    "walkIn": "Walk-in",
+    "searchCustomer": "Search by name...",
+    "noCustomerResults": "No customers found",
+    "customerSelected": "Customer",
+    "changeCustomer": "Change",
+    "unbilledServices": "Unbilled Services",
+    "unbilledServicesDesc": "These services are ready to be billed",
+    "completedServices": "Completed (auto-added)",
+    "pendingServices": "Pending / In Progress (optional)",
+    "continueToSale": "Continue to Sale",
+    "skipServices": "Skip",
+    "petLabel": "Pet",
+    "noUnbilledServices": "No unbilled services for today"
   },
   "inventory": {
     "title": "Inventory",
@@ -638,6 +680,14 @@
     "giftCardTxDate": "Date",
     "giftCardTxType": "Type",
     "giftCardTxAmount": "Amount",
+    "giftCardTxBalance": "Balance",
+    "giftCardTxBy": "By",
+    "giftCardTxTypeLabels": {
+      "PURCHASE": "Purchase",
+      "TOP_UP": "Top-Up",
+      "REDEMPTION": "Redemption",
+      "REFUND": "Refund"
+    },
     "searchPromotions": "Search promotions...",
     "promoValuePercent": "Discount percentage (%)",
     "promoValueDollar": "Discount amount ($)",
@@ -778,7 +828,8 @@
     "sizeLabels": {
       "SMALL": "Small",
       "MEDIUM": "Medium",
-      "LARGE": "Large"
+      "LARGE": "Large",
+      "XL": "Extra Large"
     },
     "confirmCompleteTitle": "Mark as Completed?",
     "confirmCompleteDesc": "This will notify the owner that their pet is ready for pickup.",

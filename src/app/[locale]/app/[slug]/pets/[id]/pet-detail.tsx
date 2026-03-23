@@ -26,6 +26,7 @@ type Pet = {
   dateOfBirth: Date | null;
   weight: number | null;
   color: string | null;
+  size: string | null;
   microchipId: string | null;
   allergies: string | null;
   notes: string | null;
@@ -130,6 +131,18 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
                 <div className="space-y-1.5">
                   <Label>{t("weight")}</Label>
                   <Input name="weight" type="number" step="0.01" defaultValue={pet.weight ?? ""} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("size")}</Label>
+                  <Select name="size" defaultValue={pet.size ?? ""}>
+                    <SelectTrigger><SelectValue placeholder={t("sizeLabels.selectSize")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SMALL">{t("sizeLabels.SMALL")}</SelectItem>
+                      <SelectItem value="MEDIUM">{t("sizeLabels.MEDIUM")}</SelectItem>
+                      <SelectItem value="LARGE">{t("sizeLabels.LARGE")}</SelectItem>
+                      <SelectItem value="XL">{t("sizeLabels.XL")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("color")}</Label>

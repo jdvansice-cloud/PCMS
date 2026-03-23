@@ -49,6 +49,7 @@ type CartItem = {
   serviceId?: string;
   giftCardProductId?: string;
   isGiftCard?: boolean;
+  giftCardCode?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -358,9 +359,8 @@ export async function createSale(input: {
       }
     }
 
-    // Generate GiftCard records for gift card line items
+    // Activate GiftCard records for gift card line items
     const generatedGiftCards: { code: string; amount: number }[] = [];
-    const gcChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     for (const item of input.items) {
       if (item.isGiftCard && item.giftCardProductId) {
         // Look up the gift card product for expiration days
@@ -373,24 +373,34 @@ export async function createSale(input: {
           ? new Date(Date.now() + expDays * 24 * 60 * 60 * 1000)
           : null;
 
-        // Generate one GiftCard per quantity unit
-        for (let q = 0; q < item.quantity; q++) {
-          let code = "";
-          for (let attempts = 0; attempts < 10; attempts++) {
-            const parts = [0, 0].map(() => {
-              let s = "";
-              for (let i = 0; i < 4; i++) s += gcChars[Math.floor(Math.random() * gcChars.length)];
-              return s;
-            });
-            code = `GC-${parts[0]}-${parts[1]}`;
-            const existing = await tx.giftCard.findUnique({
-              where: { organizationId_code: { organizationId, code } },
-            });
-            if (!existing) break;
-            if (attempts === 9) throw new Error("Could not generate unique gift card code");
-          }
+        // Use the code provided by the cashier (from the physical card)
+        const code = item.giftCardCode;
+        if (!code) throw new Error("Gift card code is required");
 
-          const gc = await tx.giftCard.create({
+        // Check if the code is already in use
+        const existing = await tx.giftCard.findUnique({
+          where: { organizationId_code: { organizationId, code } },
+        });
+        if (existing && existing.status === "ACTIVE") {
+          throw new Error(`Gift card code ${code} is already active`);
+        }
+
+        // If the code was previously used (depleted/expired/cancelled), reactivate it
+        // Otherwise create a new gift card record
+        let gc;
+        if (existing) {
+          gc = await tx.giftCard.update({
+            where: { id: existing.id },
+            data: {
+              initialBalance: item.unitPrice,
+              balance: item.unitPrice,
+              status: "ACTIVE",
+              expiresAt,
+              purchasedById: input.ownerId || null,
+            },
+          });
+        } else {
+          gc = await tx.giftCard.create({
             data: {
               organizationId,
               code,
@@ -401,20 +411,20 @@ export async function createSale(input: {
               purchasedById: input.ownerId || null,
             },
           });
-
-          await tx.giftCardTx.create({
-            data: {
-              giftCardId: gc.id,
-              saleId: sale.id,
-              amount: item.unitPrice,
-              type: "PURCHASE",
-              balanceAfter: item.unitPrice,
-              createdById: user.id,
-            },
-          });
-
-          generatedGiftCards.push({ code, amount: item.unitPrice });
         }
+
+        await tx.giftCardTx.create({
+          data: {
+            giftCardId: gc.id,
+            saleId: sale.id,
+            amount: item.unitPrice,
+            type: "PURCHASE",
+            balanceAfter: item.unitPrice,
+            createdById: user.id,
+          },
+        });
+
+        generatedGiftCards.push({ code, amount: item.unitPrice });
       }
     }
 
@@ -770,6 +780,62 @@ export async function getLoyaltyConfig() {
     expirationDays: config.expirationDays ?? 365,
     minRedemption: Number(config.minRedemption),
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UNBILLED SERVICES (for customer-first POS flow)
+// ═══════════════════════════════════════════════════════════
+
+export type UnbilledService = {
+  appointmentId: string;
+  petName: string;
+  serviceName: string;
+  serviceId: string | null;
+  type: string;
+  status: string;
+  price: number;
+  isTaxExempt: boolean;
+  autoAdd: boolean; // true for COMPLETED, false for IN_PROGRESS/PENDING
+  scheduledAt: Date;
+};
+
+export async function getOwnerUnbilledServices(ownerId: string): Promise<UnbilledService[]> {
+  const { organizationId } = await getCurrentUser();
+
+  // Get today's start/end
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      organizationId,
+      ownerId,
+      scheduledAt: { gte: todayStart, lte: todayEnd },
+      status: { in: ["COMPLETED", "IN_PROGRESS", "SCHEDULED"] },
+      sale: { is: null }, // not yet billed
+    },
+    include: {
+      pet: { select: { name: true } },
+      service: { select: { id: true, name: true, price: true, isTaxExempt: true } },
+      groomingSession: { select: { status: true, services: true } },
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+
+  return appointments.map((a) => ({
+    appointmentId: a.id,
+    petName: a.pet.name,
+    serviceName: a.service?.name ?? a.type,
+    serviceId: a.service?.id ?? null,
+    type: a.type,
+    status: a.groomingSession?.status ?? a.status,
+    price: a.service ? Number(a.service.price) : 0,
+    isTaxExempt: a.service?.isTaxExempt ?? false,
+    autoAdd: a.status === "COMPLETED" || a.groomingSession?.status === "COMPLETED",
+    scheduledAt: a.scheduledAt,
+  }));
 }
 
 export async function getOwnerLoyaltyBalance(ownerId: string) {

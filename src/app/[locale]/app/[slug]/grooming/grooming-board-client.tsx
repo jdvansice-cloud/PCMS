@@ -427,7 +427,7 @@ export function GroomingBoardClient({
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
                         {session.kennel
-                          ? `${session.kennel.name} (${session.kennel.size})`
+                          ? `${session.kennel.name} (${t(`sizeLabels.${session.kennel.size}`)})`
                           : t("noCage")}
                       </span>
                       <span>
@@ -539,7 +539,7 @@ export function GroomingBoardClient({
                     <div className="flex items-center gap-2">
                       <span className="text-sm">
                         {selectedSession.kennel?.name} (
-                        {selectedSession.kennel?.size})
+                        {selectedSession.kennel?.size ? t(`sizeLabels.${selectedSession.kennel.size}`) : ""})
                       </span>
                       <Button
                         variant="outline"
@@ -564,7 +564,7 @@ export function GroomingBoardClient({
                       <SelectContent>
                         {availableKennelsForSession.map((k) => (
                           <SelectItem key={k.id} value={k.id}>
-                            {k.name} ({k.size})
+                            {k.name} ({t(`sizeLabels.${k.size}`)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -825,7 +825,7 @@ export function GroomingBoardClient({
         {Object.entries(kennelsBySize).map(([size, kennels]) => (
           <div key={size} className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {size}
+              {t(`sizeLabels.${size}`)}
             </h3>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {kennels.map((kennel) => {

@@ -42,6 +42,7 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedSizes, setSelectedSizes] = useState<string[]>(service.petSizes ?? []);
+  const [editType, setEditType] = useState(service.type);
   const base = `/app/${slug}/services`;
 
   function toggleSize(size: string) {
@@ -99,8 +100,8 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
                 </div>
                 <div className="space-y-1.5">
                   <Label>{ta("type")} *</Label>
-                  <Select name="type" defaultValue={service.type}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select name="type" value={editType} onValueChange={(v) => v && setEditType(v)}>
+                    <SelectTrigger><SelectValue>{ts(`typeLabels.${editType}`)}</SelectValue></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CONSULTATION">{ts("typeLabels.CONSULTATION")}</SelectItem>
                       <SelectItem value="VACCINATION">{ts("typeLabels.VACCINATION")}</SelectItem>
