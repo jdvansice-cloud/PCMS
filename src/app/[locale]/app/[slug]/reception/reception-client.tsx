@@ -44,7 +44,7 @@ type ReceptionData = {
   occupiedKennelIds: string[];
   groomers: { id: string; firstName: string; lastName: string }[];
   vets: { id: string; firstName: string; lastName: string }[];
-  services: { id: string; name: string; type: string; durationMin: number }[];
+  services: { id: string; name: string; type: string; durationMin: number; petSizes: string[] }[];
   branchId: string;
 };
 
@@ -112,9 +112,9 @@ export function ReceptionClient({
     return true;
   }
 
-  // Filter grooming services
+  // Filter grooming services by pet size compatibility
   const groomingServiceOptions = data.services.filter(
-    (s) => s.type === "GROOMING"
+    (s) => s.type === "GROOMING" && (s.petSizes.length === 0 || s.petSizes.includes(petSize))
   );
   const clinicServices = data.services.filter((s) => s.type !== "GROOMING");
 

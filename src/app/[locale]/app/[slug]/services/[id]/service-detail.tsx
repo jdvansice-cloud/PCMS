@@ -16,6 +16,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { updateService, deleteService } from "../actions";
 
+const ALL_SIZES = ["SMALL", "MEDIUM", "LARGE", "XL"] as const;
+
 type Service = {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ type Service = {
   durationMin: number;
   isTaxExempt: boolean;
   isBookable: boolean;
+  petSizes: string[];
 };
 
 export function ServiceDetail({ service, slug }: { service: Service; slug: string }) {
@@ -34,10 +37,24 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
   const ta = useTranslations("appointments");
   const tf = useTranslations("form");
   const tp = useTranslations("pos");
+  const tpets = useTranslations("pets");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(service.petSizes ?? []);
   const base = `/app/${slug}/services`;
+
+  function toggleSize(size: string) {
+    setSelectedSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+    );
+  }
+
+  function toggleAllSizes() {
+    setSelectedSizes((prev) =>
+      prev.length === ALL_SIZES.length ? [] : [...ALL_SIZES]
+    );
+  }
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -108,6 +125,33 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
                 <Label>{tc("description")}</Label>
                 <Textarea name="description" defaultValue={service.description ?? ""} rows={2} />
               </div>
+              {/* Pet size availability */}
+              <div className="space-y-1.5">
+                <Label>{ts("petSizeAvailability")}</Label>
+                <p className="text-xs text-muted-foreground">{ts("petSizeAvailabilityDesc")}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Badge
+                    variant={selectedSizes.length === 0 ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleAllSizes()}
+                  >
+                    {ts("allSizes")}
+                  </Badge>
+                  {ALL_SIZES.map((size) => (
+                    <Badge
+                      key={size}
+                      variant={selectedSizes.includes(size) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => toggleSize(size)}
+                    >
+                      {tpets(`sizeLabels.${size}`)}
+                    </Badge>
+                  ))}
+                </div>
+                {selectedSizes.map((size) => (
+                  <input key={size} type="hidden" name="petSizes" value={size} />
+                ))}
+              </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="isTaxExempt" defaultChecked={service.isTaxExempt} className="rounded" />
@@ -130,6 +174,12 @@ export function ServiceDetail({ service, slug }: { service: Service; slug: strin
               <div><span className="text-muted-foreground">{ts("duration")}:</span> {service.durationMin} min</div>
               <div><span className="text-muted-foreground">ITBMS:</span> {service.isTaxExempt ? tp("exempt") : "7%"}</div>
               <div><span className="text-muted-foreground">{ts("bookable")}:</span> {service.isBookable ? tc("yes") : tc("no")}</div>
+              <div className="sm:col-span-2">
+                <span className="text-muted-foreground">{ts("petSizeAvailability")}:</span>{" "}
+                {service.petSizes.length === 0
+                  ? ts("allSizes")
+                  : service.petSizes.map((s) => tpets(`sizeLabels.${s}`)).join(", ")}
+              </div>
               {service.description && <div className="sm:col-span-2"><span className="text-muted-foreground">{tc("description")}:</span> {service.description}</div>}
             </div>
           )}

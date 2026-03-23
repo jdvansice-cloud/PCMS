@@ -86,7 +86,7 @@ export async function getTodaysScheduledAppointments() {
     }),
     prisma.service.findMany({
       where: { organizationId, isActive: true },
-      select: { id: true, name: true, type: true, durationMin: true },
+      select: { id: true, name: true, type: true, durationMin: true, petSizes: true },
       orderBy: { name: "asc" },
     }),
   ]);

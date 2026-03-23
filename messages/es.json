@@ -310,7 +310,10 @@
       "FOLLOW_UP": "Seguimiento",
       "EMERGENCY": "Emergencia",
       "OTHER": "Otro"
-    }
+    },
+    "petSizeAvailability": "Tamaño de Mascota",
+    "petSizeAvailabilityDesc": "Selecciona los tamaños de mascota para los que aplica este servicio, o deja vacío para todos los tamaños",
+    "allSizes": "Todos los Tamaños"
   },
   "form": {
     "saving": "Guardando...",

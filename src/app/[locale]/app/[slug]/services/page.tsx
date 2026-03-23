@@ -36,6 +36,7 @@ export default async function ServicesPage({
   const tc = await getTranslations("common");
   const ta = await getTranslations("appointments");
   const tp = await getTranslations("pos");
+  const tpets = await getTranslations("pets");
 
   const { services, totalPages } = await getServices(search, page);
 
@@ -70,7 +71,11 @@ export default async function ServicesPage({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium">{s.name}</p>
-                        <p className="text-xs text-muted-foreground">{s.durationMin} min</p>
+                        <p className="text-xs text-muted-foreground">
+                          {s.durationMin} min
+                          {s.petSizes.length > 0 && ` · ${s.petSizes.map((sz: string) => tpets(`sizeLabels.${sz}`)).join(", ")}`}
+                          {s.petSizes.length === 0 && ` · ${t("allSizes")}`}
+                        </p>
                       </div>
                       <span className="text-sm font-semibold">{formatCurrency(Number(s.price))}</span>
                     </div>
@@ -87,6 +92,7 @@ export default async function ServicesPage({
                   <TableHead>{tc("name")}</TableHead>
                   <TableHead>{ta("type")}</TableHead>
                   <TableHead>{tc("price")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("petSizeAvailability")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("duration")}</TableHead>
                   <TableHead className="hidden lg:table-cell">ITBMS</TableHead>
                 </TableRow>
@@ -103,6 +109,11 @@ export default async function ServicesPage({
                       <Badge className={`text-xs ${TYPE_COLORS[s.type] ?? ""}`}>{s.type}</Badge>
                     </TableCell>
                     <TableCell>{formatCurrency(Number(s.price))}</TableCell>
+                    <TableCell className="hidden md:table-cell text-xs">
+                      {s.petSizes.length === 0
+                        ? t("allSizes")
+                        : s.petSizes.map((sz: string) => tpets(`sizeLabels.${sz}`)).join(", ")}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{s.durationMin} min</TableCell>
                     <TableCell className="hidden lg:table-cell">{s.isTaxExempt ? tp("exempt") : "7%"}</TableCell>
                   </TableRow>

@@ -8,6 +8,7 @@ export const serviceSchema = z.object({
   durationMin: z.string().min(1, "Duración es requerida"),
   isTaxExempt: z.boolean().default(false),
   isBookable: z.boolean().default(true),
+  petSizes: z.array(z.enum(["SMALL", "MEDIUM", "LARGE", "XL"])).default([]),
 });
 
 export type ServiceInput = z.infer<typeof serviceSchema>;

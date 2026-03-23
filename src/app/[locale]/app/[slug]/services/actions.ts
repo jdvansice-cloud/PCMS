@@ -43,10 +43,12 @@ export async function createService(formData: FormData) {
 
   const raw = Object.fromEntries(formData);
   // Handle checkbox booleans
+  const petSizesRaw = formData.getAll("petSizes") as string[];
   const data = {
     ...raw,
     isTaxExempt: raw.isTaxExempt === "on",
     isBookable: raw.isBookable === "on" || !raw.isBookable,
+    petSizes: petSizesRaw.length > 0 ? petSizesRaw : [],
   };
   const parsed = serviceSchema.parse(data);
 
@@ -60,6 +62,7 @@ export async function createService(formData: FormData) {
       durationMin: parseInt(parsed.durationMin),
       isTaxExempt: parsed.isTaxExempt,
       isBookable: parsed.isBookable,
+      petSizes: parsed.petSizes,
     },
   });
 
@@ -79,10 +82,12 @@ export async function updateService(id: string, formData: FormData) {
   const { user, organizationId, slug } = await getCurrentUser();
 
   const raw = Object.fromEntries(formData);
+  const petSizesRaw = formData.getAll("petSizes") as string[];
   const data = {
     ...raw,
     isTaxExempt: raw.isTaxExempt === "on",
     isBookable: raw.isBookable === "on",
+    petSizes: petSizesRaw.length > 0 ? petSizesRaw : [],
   };
   const parsed = serviceSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -98,6 +103,7 @@ export async function updateService(id: string, formData: FormData) {
     durationMin: parseInt(parsed.data.durationMin),
     isTaxExempt: parsed.data.isTaxExempt,
     isBookable: parsed.data.isBookable,
+    petSizes: parsed.data.petSizes,
   };
 
   await prisma.service.update({ where: { id }, data: updateData });

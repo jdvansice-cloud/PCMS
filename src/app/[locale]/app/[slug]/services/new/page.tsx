@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +14,8 @@ import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { createService } from "../actions";
 
+const ALL_SIZES = ["SMALL", "MEDIUM", "LARGE", "XL"] as const;
+
 export default function NewServicePage() {
   const { organization } = useTenant();
   const base = `/app/${organization.slug}/services`;
@@ -19,6 +23,20 @@ export default function NewServicePage() {
   const ts = useTranslations("services");
   const ta = useTranslations("appointments");
   const tf = useTranslations("form");
+  const tp = useTranslations("pets");
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+
+  function toggleSize(size: string) {
+    setSelectedSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+    );
+  }
+
+  function toggleAllSizes() {
+    setSelectedSizes((prev) =>
+      prev.length === ALL_SIZES.length ? [] : [...ALL_SIZES]
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -55,6 +73,34 @@ export default function NewServicePage() {
                 <Label>{ts("duration")} (min) *</Label>
                 <Input name="durationMin" type="number" defaultValue="30" required />
               </div>
+            </div>
+            {/* Pet size availability */}
+            <div className="space-y-1.5">
+              <Label>{ts("petSizeAvailability")}</Label>
+              <p className="text-xs text-muted-foreground">{ts("petSizeAvailabilityDesc")}</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Badge
+                  variant={selectedSizes.length === 0 ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={toggleAllSizes}
+                >
+                  {ts("allSizes")}
+                </Badge>
+                {ALL_SIZES.map((size) => (
+                  <Badge
+                    key={size}
+                    variant={selectedSizes.includes(size) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleSize(size)}
+                  >
+                    {tp(`sizeLabels.${size}`)}
+                  </Badge>
+                ))}
+              </div>
+              {/* Hidden inputs for form submission */}
+              {selectedSizes.map((size) => (
+                <input key={size} type="hidden" name="petSizes" value={size} />
+              ))}
             </div>
             <div className="space-y-1.5">
               <Label>{tc("description")}</Label>

@@ -564,6 +564,7 @@ model Service {
   durationMin    Int             @default(30) @map("duration_min")
   isBookable     Boolean         @default(true) @map("is_bookable")
   isActive       Boolean         @default(true) @map("is_active")
+  petSizes       String[]        @default([]) @map("pet_sizes")
   isBathService  Boolean         @default(false) @map("is_bath_service")
   isBathOnly     Boolean         @default(false) @map("is_bath_only")
   createdAt      DateTime        @default(now()) @map("created_at")

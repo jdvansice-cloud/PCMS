@@ -310,7 +310,10 @@
       "FOLLOW_UP": "Follow-up",
       "EMERGENCY": "Emergency",
       "OTHER": "Other"
-    }
+    },
+    "petSizeAvailability": "Pet Size",
+    "petSizeAvailabilityDesc": "Select which pet sizes this service applies to, or leave empty for all sizes",
+    "allSizes": "All Sizes"
   },
   "form": {
     "saving": "Saving...",

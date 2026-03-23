@@ -340,7 +340,7 @@ export function BookingForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              {orgData.services.map((service) => (
+              {orgData.services.filter((service) => service.petSizes.length === 0 || service.petSizes.includes(petSize)).map((service) => (
                 <label
                   key={service.id}
                   className={`flex items-center gap-3 rounded-lg border-2 p-4 cursor-pointer transition-colors ${

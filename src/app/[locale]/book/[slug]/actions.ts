@@ -49,6 +49,7 @@ export async function getPublicOrgData(slug: string) {
       price: Number(s.price),
       durationMin: s.durationMin,
       isBathService: s.isBathService,
+      petSizes: s.petSizes,
     })),
     config: config
       ? {
