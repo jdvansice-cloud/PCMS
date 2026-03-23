@@ -254,8 +254,14 @@ export function GroomingBoardClient({
 
   const handlePickedUp = (session: Session) => {
     startTransition(async () => {
-      await markGroomingPickedUp(session.id);
-      refreshBoard();
+      try {
+        await markGroomingPickedUp(session.id);
+        refreshBoard();
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === "UNPAID_SERVICES") {
+          alert(t("unpaidServicesBlock"));
+        }
+      }
     });
   };
 

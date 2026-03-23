@@ -208,8 +208,14 @@ export function AppointmentBoardClient({ initialData, initialDate, slug }: Props
 
   const handlePickedUp = (appt: Appointment) => {
     startTransition(async () => {
-      await markAppointmentPickedUp(appt.id);
-      refreshBoard();
+      try {
+        await markAppointmentPickedUp(appt.id);
+        refreshBoard();
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === "UNPAID_SERVICES") {
+          alert(t("unpaidServicesBlock"));
+        }
+      }
     });
   };
 

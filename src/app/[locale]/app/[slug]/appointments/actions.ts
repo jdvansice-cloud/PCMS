@@ -333,6 +333,33 @@ export async function releaseKennelFromAppointment(appointmentId: string) {
 export async function markAppointmentPickedUp(appointmentId: string) {
   const { organizationId, user, slug } = await getCurrentUser();
 
+  // Look up the appointment to get petId
+  const appt = await prisma.appointment.findUnique({
+    where: { id: appointmentId, organizationId },
+    select: { petId: true },
+  });
+  if (!appt) throw new Error("Appointment not found");
+
+  // Block delivery if any appointment for this pet today is unpaid
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const unpaidCount = await prisma.appointment.count({
+    where: {
+      organizationId,
+      petId: appt.petId,
+      scheduledAt: { gte: todayStart, lte: todayEnd },
+      status: { not: "CANCELLED" },
+      checkedInAt: { not: null },
+      saleId: null,
+    },
+  });
+  if (unpaidCount > 0) {
+    throw new Error("UNPAID_SERVICES");
+  }
+
   const now = new Date();
   await prisma.appointment.update({
     where: { id: appointmentId, organizationId },

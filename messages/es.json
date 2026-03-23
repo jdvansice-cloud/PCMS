@@ -233,7 +233,8 @@
     "moveTo": {
       "IN_PROGRESS": "Iniciar visita",
       "COMPLETED": "Completar"
-    }
+    },
+    "unpaidServicesBlock": "Esta mascota tiene servicios sin pagar. Todos los servicios deben estar pagados antes de entregar la mascota."
   },
   "pos": {
     "title": "Punto de Venta",
@@ -845,7 +846,8 @@
     "scheduledAppointments": "Citas Programadas",
     "selectOwner": "Seleccionar dueño",
     "selectPet": "Seleccionar mascota",
-    "noServicesForSize": "No hay servicios disponibles para este tamaño de mascota"
+    "noServicesForSize": "No hay servicios disponibles para este tamaño de mascota",
+    "unpaidServicesBlock": "Esta mascota tiene servicios sin pagar. Todos los servicios deben estar pagados antes de entregar la mascota."
   },
   "reception": {
     "title": "Recepción de Mascotas",

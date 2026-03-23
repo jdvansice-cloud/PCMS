@@ -70,6 +70,7 @@ type CartItem = {
   giftCardProductId?: string;
   isGiftCard?: boolean;
   giftCardCode?: string;
+  appointmentId?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -722,6 +723,7 @@ export function PosTerminal({
             {
               key: `appt-${svc.appointmentId}`,
               serviceId: svc.serviceId ?? undefined,
+              appointmentId: svc.appointmentId,
               description: `${svc.serviceName} — ${svc.petName}`,
               quantity: 1,
               unitPrice: svc.price,

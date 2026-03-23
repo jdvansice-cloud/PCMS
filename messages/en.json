@@ -233,7 +233,8 @@
     "moveTo": {
       "IN_PROGRESS": "Start visit",
       "COMPLETED": "Complete"
-    }
+    },
+    "unpaidServicesBlock": "This pet has unpaid services. All services must be paid before the pet can be released."
   },
   "pos": {
     "title": "Point of Sale",
@@ -844,7 +845,8 @@
     "scheduledAppointments": "Scheduled Appointments",
     "selectOwner": "Select owner",
     "selectPet": "Select pet",
-    "noServicesForSize": "No services available for this pet size"
+    "noServicesForSize": "No services available for this pet size",
+    "unpaidServicesBlock": "This pet has unpaid services. All services must be paid before the pet can be released."
   },
   "reception": {
     "title": "Pet Reception",

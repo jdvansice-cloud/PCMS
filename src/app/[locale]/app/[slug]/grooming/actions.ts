@@ -337,8 +337,31 @@ export async function markGroomingPickedUp(sessionId: string) {
 
   const session = await prisma.groomingSession.findUnique({
     where: { id: sessionId, organizationId },
+    include: { appointment: { select: { petId: true, ownerId: true } } },
   });
   if (!session) throw new Error("Session not found");
+
+  // Block delivery if any appointment for this pet today is unpaid
+  if (session.appointment) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const unpaidCount = await prisma.appointment.count({
+      where: {
+        organizationId,
+        petId: session.appointment.petId,
+        scheduledAt: { gte: todayStart, lte: todayEnd },
+        status: { not: "CANCELLED" },
+        checkedInAt: { not: null },
+        saleId: null,
+      },
+    });
+    if (unpaidCount > 0) {
+      throw new Error("UNPAID_SERVICES");
+    }
+  }
 
   const now = new Date();
 

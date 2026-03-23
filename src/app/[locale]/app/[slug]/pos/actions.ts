@@ -50,6 +50,7 @@ type CartItem = {
   giftCardProductId?: string;
   isGiftCard?: boolean;
   giftCardCode?: string;
+  appointmentId?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -61,6 +62,7 @@ type CartItem = {
 export async function createSale(input: {
   ownerId?: string;
   appointmentId?: string;
+  appointmentIds?: string[];
   items: CartItem[];
   paymentMethod?: PaymentMethod;
   payments?: {
@@ -213,14 +215,21 @@ export async function createSale(input: {
 
   // --- g. Execute in transaction for atomicity ---
   const result = await prisma.$transaction(async (tx) => {
-    // Check if this sale is linked to an online booking
+    // Collect all appointment IDs (from new array + legacy single field + cart items)
+    const allAppointmentIds = new Set<string>();
+    if (input.appointmentIds) input.appointmentIds.forEach((id) => allAppointmentIds.add(id));
+    if (input.appointmentId) allAppointmentIds.add(input.appointmentId);
+    for (const item of input.items) {
+      if (item.appointmentId) allAppointmentIds.add(item.appointmentId);
+    }
+
+    // Check if any linked appointment is a public booking
     let isOnlineSale = false;
-    if (input.appointmentId) {
-      const appointment = await tx.appointment.findUnique({
-        where: { id: input.appointmentId },
-        select: { isPublicBooking: true },
+    if (allAppointmentIds.size > 0) {
+      const onlineCount = await tx.appointment.count({
+        where: { id: { in: [...allAppointmentIds] }, isPublicBooking: true },
       });
-      isOnlineSale = appointment?.isPublicBooking ?? false;
+      isOnlineSale = onlineCount > 0;
     }
 
     // Create the sale
@@ -244,6 +253,14 @@ export async function createSale(input: {
         lines: { create: lines },
       },
     });
+
+    // Link all appointments to this sale (mark them as paid)
+    if (allAppointmentIds.size > 0) {
+      await tx.appointment.updateMany({
+        where: { id: { in: [...allAppointmentIds] } },
+        data: { saleId: sale.id },
+      });
+    }
 
     // Create SalePromotion records & increment usageCount
     for (const pd of promotionDiscountMap) {
@@ -814,7 +831,7 @@ export async function getOwnerUnbilledServices(ownerId: string): Promise<Unbille
       ownerId,
       scheduledAt: { gte: todayStart, lte: todayEnd },
       status: { in: ["COMPLETED", "IN_PROGRESS", "SCHEDULED"] },
-      sale: { is: null }, // not yet billed
+      saleId: null, // not yet billed
     },
     include: {
       pet: { select: { name: true } },
