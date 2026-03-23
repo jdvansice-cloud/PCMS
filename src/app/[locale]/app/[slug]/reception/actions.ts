@@ -9,19 +9,26 @@ import type { KennelSize } from "@/generated/prisma/client";
 // ---------------------------------------------------------------------------
 // getTodaysScheduledAppointments
 // ---------------------------------------------------------------------------
-export async function getTodaysScheduledAppointments() {
+export async function getTodaysScheduledAppointments(dateStr?: string) {
   const { organizationId } = await getCurrentUser();
 
   const branch = await prisma.branch.findFirst({
     where: { organizationId, isMain: true },
     select: { id: true },
   });
-  if (!branch) return { appointments: [], owners: [], kennels: [], groomers: [], vets: [], services: [] };
+  if (!branch) return { appointments: [], owners: [], kennels: [], occupiedKennelIds: [], groomers: [], vets: [], services: [], branchId: "" };
 
-  const now = new Date();
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+  let dayStart: Date;
+  let dayEnd: Date;
+  if (dateStr) {
+    dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+    dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  } else {
+    const now = new Date();
+    dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+  }
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -130,6 +137,41 @@ export async function getTodaysScheduledAppointments() {
     services,
     branchId: branch.id,
   };
+}
+
+// ---------------------------------------------------------------------------
+// getScheduledAppointmentsByDate — fetch pending appointments for a given date
+// ---------------------------------------------------------------------------
+export async function getScheduledAppointmentsByDate(dateStr: string) {
+  const { organizationId } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) return [];
+
+  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      organizationId,
+      branchId: branch.id,
+      scheduledAt: { gte: dayStart, lte: dayEnd },
+      checkedInAt: null,
+      status: { in: ["SCHEDULED", "CONFIRMED"] },
+    },
+    include: {
+      owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      pet: { select: { id: true, name: true, species: true, breed: true, size: true } },
+      vet: { select: { id: true, firstName: true, lastName: true } },
+      service: { select: { id: true, name: true } },
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+
+  return appointments;
 }
 
 // ---------------------------------------------------------------------------

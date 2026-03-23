@@ -22,6 +22,7 @@ import { useFormatDate } from "@/lib/use-format-date";
 import {
   checkInScheduledAppointment,
   createWalkInAppointment,
+  getScheduledAppointmentsByDate,
 } from "./actions";
 
 type ReceptionData = {
@@ -55,16 +56,30 @@ const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 
 export function ReceptionClient({
   data,
   slug,
+  initialDate,
 }: {
   data: ReceptionData;
   slug: string;
+  initialDate: string;
 }) {
   const t = useTranslations("reception");
   const tc = useTranslations("common");
   const tg = useTranslations("grooming");
-  const { formatTime } = useFormatDate();
+  const { formatTime, formatDate: fmtDate } = useFormatDate();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // Date & appointments state
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [appointments, setAppointments] = useState(data.appointments);
+
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    startTransition(async () => {
+      const appts = await getScheduledAppointmentsByDate(newDate);
+      setAppointments(JSON.parse(JSON.stringify(appts)));
+    });
+  };
 
   // Step state
   const [step, setStep] = useState<Step>("search");
@@ -119,7 +134,7 @@ export function ReceptionClient({
   const clinicServices = data.services.filter((s) => s.type !== "GROOMING");
 
   // Search filter for scheduled appointments
-  const filteredAppointments = data.appointments.filter((a) => {
+  const filteredAppointments = appointments.filter((a) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -218,22 +233,30 @@ export function ReceptionClient({
       {/* ── Step 1: Search / Select ──────────────────────────────── */}
       {step === "search" && (
         <>
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* Date picker + Search bar */}
+          <div className="flex gap-2">
             <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-44"
             />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
 
           {/* Scheduled appointments */}
           <div className="space-y-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              {t("scheduledAppointments")}
+              {t("scheduledAppointments")} ({filteredAppointments.length})
             </h2>
 
             {filteredAppointments.length === 0 ? (
