@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAvailableDates } from "@/lib/grooming";
 import { sendTemplatedEmail, seedGroomingTemplates } from "@/lib/email";
 import { bookingSchema, type BookingInput } from "@/lib/validators/booking";
+import { localDateTimeToUTC } from "@/lib/format-date";
 import type { KennelSize } from "@/generated/prisma/client";
 
 export async function getPublicOrgData(slug: string) {
@@ -162,8 +163,9 @@ export async function createPublicBooking(slug: string, data: BookingInput) {
     });
   }
 
-  // 5. Build scheduled date
-  const scheduledAt = new Date(input.date + "T00:00:00");
+  // 5. Build scheduled date (in org timezone)
+  const orgTimezone = org.timezone || "America/Panama";
+  const scheduledAt = localDateTimeToUTC(input.date, "00:00", orgTimezone);
 
   const serviceNames = org.services.map((s) => s.name);
   const reason = serviceNames.join(", ");

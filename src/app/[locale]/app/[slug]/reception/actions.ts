@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { getOrgDateSettings, getDayBoundsUTC } from "@/lib/format-date";
 import type { KennelSize } from "@/generated/prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -18,17 +19,9 @@ export async function getTodaysScheduledAppointments(dateStr?: string) {
   });
   if (!branch) return { appointments: [], owners: [], kennels: [], occupiedKennelIds: [], groomers: [], vets: [], services: [], branchId: "" };
 
-  let dayStart: Date;
-  let dayEnd: Date;
-  if (dateStr) {
-    dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-    dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
-  } else {
-    const now = new Date();
-    dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-  }
+  const { timezone } = await getOrgDateSettings();
+  const today = dateStr || new Date().toISOString().split("T")[0];
+  const { dayStart, dayEnd } = getDayBoundsUTC(today, timezone);
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -151,8 +144,8 @@ export async function getScheduledAppointmentsByDate(dateStr: string) {
   });
   if (!branch) return [];
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const appointments = await prisma.appointment.findMany({
     where: {

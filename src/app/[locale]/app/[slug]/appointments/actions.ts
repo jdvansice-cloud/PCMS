@@ -6,6 +6,7 @@ import { appointmentSchema } from "@/lib/validators/appointment";
 import { createAuditLog, diffChanges } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { datetimeLocalToUTC, getOrgDateSettings, getDayBoundsUTC } from "@/lib/format-date";
 import type { AppointmentStatus } from "@/generated/prisma/client";
 
 const PAGE_SIZE = 20;
@@ -113,6 +114,10 @@ export async function createAppointment(formData: FormData) {
   });
   if (!branch) throw new Error("No hay sucursal configurada");
 
+  // Convert user-entered datetime to proper UTC (input is in org timezone)
+  const { timezone } = await getOrgDateSettings();
+  const scheduledAt = datetimeLocalToUTC(parsed.data.scheduledAt, timezone);
+
   const appointment = await prisma.appointment.create({
     data: {
       organizationId,
@@ -122,7 +127,7 @@ export async function createAppointment(formData: FormData) {
       vetId: parsed.data.vetId || null,
       serviceId: parsed.data.serviceId || null,
       type: parsed.data.type,
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt,
       durationMin: parseInt(parsed.data.durationMin),
       reason: parsed.data.reason || null,
       notes: parsed.data.notes || null,
@@ -205,8 +210,8 @@ export async function getAppointmentBoard(dateStr: string) {
   });
   if (!branch) return { appointments: [], branchId: "" };
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -242,8 +247,8 @@ export async function getKennelOccupancyAll(dateStr: string) {
   });
   if (!branch) return [];
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const kennels = await prisma.kennel.findMany({
     where: { organizationId, branchId: branch.id },

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { sendTemplatedEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import { localDateTimeToUTC, getOrgDateSettings, getDayBoundsUTC } from "@/lib/format-date";
 import type { KennelSize, GroomingStatus } from "@/generated/prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -18,8 +19,8 @@ export async function getGroomingBoard(dateStr: string) {
   });
   if (!branch) throw new Error("Main branch not found");
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const sessions = await prisma.groomingSession.findMany({
     where: {
@@ -446,7 +447,10 @@ export async function createGroomingAppointment(data: {
   });
   if (!branch) throw new Error("No branch configured");
 
-  const scheduledDate = new Date(data.scheduledAt);
+  // Convert user-entered time to proper UTC (user enters time in org timezone)
+  const { timezone } = await getOrgDateSettings();
+  const [datePart, timePart] = data.scheduledAt.split("T");
+  const scheduledDate = localDateTimeToUTC(datePart, timePart, timezone);
 
   // Create the appointment
   const appointment = await prisma.appointment.create({
@@ -498,8 +502,10 @@ export async function createGroomingAppointment(data: {
 export async function getScheduledGroomingAppointments() {
   const { organizationId } = await getCurrentUser();
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  // Start of "today" in org timezone
+  const { timezone } = await getOrgDateSettings();
+  const todayStr = new Date().toISOString().split("T")[0];
+  const { dayStart } = getDayBoundsUTC(todayStr, timezone);
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -507,7 +513,7 @@ export async function getScheduledGroomingAppointments() {
       type: "GROOMING",
       status: { in: ["SCHEDULED", "CONFIRMED"] },
       checkedInAt: null,
-      scheduledAt: { gte: now },
+      scheduledAt: { gte: dayStart },
     },
     include: {
       owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
@@ -540,8 +546,8 @@ export async function getKennelOccupancy(dateStr: string) {
   });
   if (!branch) throw new Error("Main branch not found");
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const kennels = await prisma.kennel.findMany({
     where: { organizationId, branchId: branch.id },
@@ -587,8 +593,8 @@ export async function getDailyPickups(dateStr: string) {
   });
   if (!branch) throw new Error("Main branch not found");
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, timezone);
 
   const pickups = await prisma.groomingPickup.findMany({
     where: {
@@ -729,8 +735,8 @@ export async function optimizeRouteAction(dateStr: string) {
   });
   if (!branch) throw new Error("Main branch not found");
 
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+  const { timezone: tz } = await getOrgDateSettings();
+  const { dayStart, dayEnd } = getDayBoundsUTC(dateStr, tz);
 
   const pickups = await prisma.groomingPickup.findMany({
     where: {
