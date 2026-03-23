@@ -142,6 +142,7 @@
     "cedula": "National ID",
     "ruc": "Tax ID (RUC)",
     "whatsapp": "WhatsApp",
+    "firstVisit": "First visit",
     "petsCount": "Pets",
     "created": "Registered",
     "noClients": "No clients registered",

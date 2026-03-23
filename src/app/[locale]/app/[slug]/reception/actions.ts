@@ -220,6 +220,12 @@ export async function checkInScheduledAppointment(
     });
   }
 
+  // Set firstVisitAt on owner if this is their first check-in
+  await prisma.owner.updateMany({
+    where: { id: appointment.ownerId, firstVisitAt: null },
+    data: { firstVisitAt: now },
+  });
+
   await createAuditLog({
     organizationId,
     userId: user.id,
@@ -304,6 +310,12 @@ export async function createWalkInAppointment(data: {
       },
     });
   }
+
+  // Set firstVisitAt on owner if this is their first visit
+  await prisma.owner.updateMany({
+    where: { id: data.ownerId, firstVisitAt: null },
+    data: { firstVisitAt: now },
+  });
 
   await createAuditLog({
     organizationId,

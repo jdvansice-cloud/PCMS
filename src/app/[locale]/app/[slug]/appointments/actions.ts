@@ -168,6 +168,14 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
     data: updateData,
   });
 
+  // Set firstVisitAt on owner if this is their first check-in
+  if (status === "IN_PROGRESS" && current.ownerId) {
+    await prisma.owner.updateMany({
+      where: { id: current.ownerId, firstVisitAt: null },
+      data: { firstVisitAt: new Date() },
+    });
+  }
+
   await createAuditLog({
     organizationId,
     userId: user.id,

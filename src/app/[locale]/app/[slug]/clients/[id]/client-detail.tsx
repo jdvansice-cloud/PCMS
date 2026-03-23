@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { updateOwner, deleteOwner } from "../actions";
 
 type Owner = {
@@ -26,6 +27,7 @@ type Owner = {
   whatsapp: string | null;
   address: string | null;
   notes: string | null;
+  firstVisitAt: string | null;
   pets: { id: string; name: string; species: string; breed: string | null }[];
 };
 
@@ -39,6 +41,7 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
   const tc = useTranslations("common");
   const tf = useTranslations("form");
   const tp = useTranslations("pets");
+  const { formatDate } = useFormatDate();
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -127,6 +130,7 @@ export function ClientDetail({ owner, slug }: { owner: Owner; slug: string }) {
                 <div><span className="text-muted-foreground">{tc("email")}:</span> {owner.email || "—"}</div>
                 <div><span className="text-muted-foreground">{tc("phone")}:</span> {owner.phone || "—"}</div>
                 <div><span className="text-muted-foreground">{t("whatsapp")}:</span> {owner.whatsapp || "—"}</div>
+                <div><span className="text-muted-foreground">{t("firstVisit")}:</span> {owner.firstVisitAt ? formatDate(new Date(owner.firstVisitAt)) : "—"}</div>
                 {owner.address && (
                   <div className="sm:col-span-2"><span className="text-muted-foreground">{tc("address")}:</span> {owner.address}</div>
                 )}
