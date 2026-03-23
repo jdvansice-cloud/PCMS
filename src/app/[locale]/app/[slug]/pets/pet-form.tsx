@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,10 @@ import { useTranslations } from "next-intl";
 import { createPet } from "./actions";
 
 type Owner = { id: string; firstName: string; lastName: string };
+
+const SPECIES = ["DOG", "CAT", "BIRD", "REPTILE", "RODENT", "OTHER"] as const;
+const SEXES = ["MALE", "FEMALE", "UNKNOWN"] as const;
+const SIZES = ["SMALL", "MEDIUM", "LARGE", "XL"] as const;
 
 export function PetForm({
   slug,
@@ -27,6 +32,11 @@ export function PetForm({
   const tf = useTranslations("form");
   const base = `/app/${slug}/pets`;
 
+  const [species, setSpecies] = useState("DOG");
+  const [sex, setSex] = useState("UNKNOWN");
+  const [size, setSize] = useState("");
+  const [ownerId, setOwnerId] = useState(defaultOwnerId || "");
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("newPet")} backHref={base} />
@@ -37,9 +47,13 @@ export function PetForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>{t("owner")} *</Label>
-                <Select name="ownerId" defaultValue={defaultOwnerId} required>
+                <Select name="ownerId" value={ownerId} onValueChange={(v) => v && setOwnerId(v)} required>
                   <SelectTrigger>
-                    <SelectValue placeholder={tf("selectOwner")} />
+                    <SelectValue placeholder={tf("selectOwner")}>
+                      {ownerId
+                        ? (() => { const o = owners.find((o) => o.id === ownerId); return o ? `${o.firstName} ${o.lastName}` : tf("selectOwner"); })()
+                        : tf("selectOwner")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {owners.map((o) => (
@@ -56,17 +70,14 @@ export function PetForm({
               </div>
               <div className="space-y-1.5">
                 <Label>{t("species")} *</Label>
-                <Select name="species" defaultValue="DOG">
+                <Select name="species" value={species} onValueChange={(v) => v && setSpecies(v)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{t(`speciesLabels.${species}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DOG">{t("speciesLabels.DOG")}</SelectItem>
-                    <SelectItem value="CAT">{t("speciesLabels.CAT")}</SelectItem>
-                    <SelectItem value="BIRD">{t("speciesLabels.BIRD")}</SelectItem>
-                    <SelectItem value="REPTILE">{t("speciesLabels.REPTILE")}</SelectItem>
-                    <SelectItem value="RODENT">{t("speciesLabels.RODENT")}</SelectItem>
-                    <SelectItem value="OTHER">{t("speciesLabels.OTHER")}</SelectItem>
+                    {SPECIES.map((s) => (
+                      <SelectItem key={s} value={s}>{t(`speciesLabels.${s}`)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -76,14 +87,14 @@ export function PetForm({
               </div>
               <div className="space-y-1.5">
                 <Label>{t("sex")}</Label>
-                <Select name="sex" defaultValue="UNKNOWN">
+                <Select name="sex" value={sex} onValueChange={(v) => v && setSex(v)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{t(`sexLabels.${sex}`)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MALE">{t("sexLabels.MALE")}</SelectItem>
-                    <SelectItem value="FEMALE">{t("sexLabels.FEMALE")}</SelectItem>
-                    <SelectItem value="UNKNOWN">{t("sexLabels.UNKNOWN")}</SelectItem>
+                    {SEXES.map((s) => (
+                      <SelectItem key={s} value={s}>{t(`sexLabels.${s}`)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -97,15 +108,16 @@ export function PetForm({
               </div>
               <div className="space-y-1.5">
                 <Label>{t("size")}</Label>
-                <Select name="size">
+                <Select name="size" value={size} onValueChange={(v) => v && setSize(v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("sizeLabels.selectSize")} />
+                    <SelectValue placeholder={t("sizeLabels.selectSize")}>
+                      {size ? t(`sizeLabels.${size}`) : t("sizeLabels.selectSize")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SMALL">{t("sizeLabels.SMALL")}</SelectItem>
-                    <SelectItem value="MEDIUM">{t("sizeLabels.MEDIUM")}</SelectItem>
-                    <SelectItem value="LARGE">{t("sizeLabels.LARGE")}</SelectItem>
-                    <SelectItem value="XL">{t("sizeLabels.XL")}</SelectItem>
+                    {SIZES.map((s) => (
+                      <SelectItem key={s} value={s}>{t(`sizeLabels.${s}`)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

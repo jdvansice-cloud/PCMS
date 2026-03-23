@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { updatePet, deletePet } from "../actions";
 
 type Pet = {
@@ -28,17 +29,26 @@ type Pet = {
   microchipId: string | null;
   allergies: string | null;
   notes: string | null;
+  size: string | null;
   owner: { id: string; firstName: string; lastName: string };
 };
+
+const SPECIES = ["DOG", "CAT", "BIRD", "REPTILE", "RODENT", "OTHER"] as const;
+const SEXES = ["MALE", "FEMALE", "UNKNOWN"] as const;
+const SIZES = ["SMALL", "MEDIUM", "LARGE", "XL"] as const;
 
 export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
   const router = useRouter();
   const t = useTranslations("pets");
   const tc = useTranslations("common");
   const tf = useTranslations("form");
+  const { formatDate } = useFormatDate();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editSpecies, setEditSpecies] = useState(pet.species);
+  const [editSex, setEditSex] = useState(pet.sex);
+  const [editSize, setEditSize] = useState(pet.size || "");
   const base = `/app/${slug}/pets`;
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -85,15 +95,14 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("species")}</Label>
-                  <Select name="species" defaultValue={pet.species}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select name="species" value={editSpecies} onValueChange={(v) => v && setEditSpecies(v)}>
+                    <SelectTrigger>
+                      <SelectValue>{t(`speciesLabels.${editSpecies}`)}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DOG">{t("speciesLabels.DOG")}</SelectItem>
-                      <SelectItem value="CAT">{t("speciesLabels.CAT")}</SelectItem>
-                      <SelectItem value="BIRD">{t("speciesLabels.BIRD")}</SelectItem>
-                      <SelectItem value="REPTILE">{t("speciesLabels.REPTILE")}</SelectItem>
-                      <SelectItem value="RODENT">{t("speciesLabels.RODENT")}</SelectItem>
-                      <SelectItem value="OTHER">{t("speciesLabels.OTHER")}</SelectItem>
+                      {SPECIES.map((s) => (
+                        <SelectItem key={s} value={s}>{t(`speciesLabels.${s}`)}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -103,12 +112,14 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("sex")}</Label>
-                  <Select name="sex" defaultValue={pet.sex}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select name="sex" value={editSex} onValueChange={(v) => v && setEditSex(v)}>
+                    <SelectTrigger>
+                      <SelectValue>{t(`sexLabels.${editSex}`)}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MALE">{t("sexLabels.MALE")}</SelectItem>
-                      <SelectItem value="FEMALE">{t("sexLabels.FEMALE")}</SelectItem>
-                      <SelectItem value="UNKNOWN">{t("sexLabels.UNKNOWN")}</SelectItem>
+                      {SEXES.map((s) => (
+                        <SelectItem key={s} value={s}>{t(`sexLabels.${s}`)}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -145,11 +156,12 @@ export function PetDetail({ pet, slug }: { pet: Pet; slug: string }) {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               <div><span className="text-muted-foreground">{t("owner")}:</span> <Link href={`/app/${slug}/clients/${pet.owner.id}`} className="hover:underline">{pet.owner.firstName} {pet.owner.lastName}</Link></div>
-              <div><span className="text-muted-foreground">{t("species")}:</span> <Badge variant="secondary">{pet.species}</Badge></div>
+              <div><span className="text-muted-foreground">{t("species")}:</span> <Badge variant="secondary">{t(`speciesLabels.${pet.species}`)}</Badge></div>
               <div><span className="text-muted-foreground">{t("breed")}:</span> {pet.breed || "\u2014"}</div>
-              <div><span className="text-muted-foreground">{t("sex")}:</span> {pet.sex}</div>
-              <div><span className="text-muted-foreground">{t("dateOfBirth")}:</span> {pet.dateOfBirth ? new Date(pet.dateOfBirth).toLocaleDateString("es-PA") : "\u2014"}</div>
+              <div><span className="text-muted-foreground">{t("sex")}:</span> {t(`sexLabels.${pet.sex}`)}</div>
+              <div><span className="text-muted-foreground">{t("dateOfBirth")}:</span> {pet.dateOfBirth ? formatDate(pet.dateOfBirth) : "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("weight")}:</span> {pet.weight ? `${pet.weight} kg` : "\u2014"}</div>
+              <div><span className="text-muted-foreground">{t("size")}:</span> {pet.size ? t(`sizeLabels.${pet.size}`) : "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("color")}:</span> {pet.color || "\u2014"}</div>
               <div><span className="text-muted-foreground">{t("microchip")}:</span> {pet.microchipId || "\u2014"}</div>
               {pet.allergies && <div className="sm:col-span-2"><span className="text-muted-foreground">{t("allergies")}:</span> {pet.allergies}</div>}
