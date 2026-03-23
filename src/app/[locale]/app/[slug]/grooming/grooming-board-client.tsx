@@ -134,7 +134,6 @@ export function GroomingBoardClient({
   const [newDate, setNewDate] = useState(date);
   const [newTime, setNewTime] = useState("09:00");
   const [newGroomerId, setNewGroomerId] = useState("");
-  const [newKennelId, setNewKennelId] = useState("");
   const [newServices, setNewServices] = useState<string[]>([]);
   const [newInstructions, setNewInstructions] = useState("");
 
@@ -147,10 +146,6 @@ export function GroomingBoardClient({
     (s) => s.petSizes.length === 0 || s.petSizes.includes(newPetSize)
   );
 
-  // Filter kennels by pet size (same or larger)
-  const compatibleNewKennels = formData.kennels.filter(
-    (k) => (SIZE_ORDER_CONST[k.size] ?? 0) >= (SIZE_ORDER_CONST[newPetSize] ?? 1)
-  );
 
   // -- Refresh board data ---------------------------------------------------
   const refreshBoard = useCallback(
@@ -276,7 +271,6 @@ export function GroomingBoardClient({
     setNewDate(date);
     setNewTime("09:00");
     setNewGroomerId("");
-    setNewKennelId("");
     setNewServices([]);
     setNewInstructions("");
   };
@@ -289,7 +283,6 @@ export function GroomingBoardClient({
         petId: newPetId,
         scheduledAt: `${newDate}T${newTime}:00`,
         groomerId: newGroomerId || undefined,
-        kennelId: newKennelId || undefined,
         services: newServices,
         specialInstructions: newInstructions || undefined,
         petSize: newPetSize,
@@ -523,7 +516,11 @@ export function GroomingBoardClient({
                     disabled={isPending}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("selectGroomer")} />
+                      <SelectValue placeholder={t("selectGroomer")}>
+                        {selectedSession.groomer
+                          ? `${selectedSession.groomer.firstName} ${selectedSession.groomer.lastName}`
+                          : t("selectGroomer")}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {groomers.map((g) => (
@@ -752,46 +749,25 @@ export function GroomingBoardClient({
               </div>
             </div>
 
-            {/* Groomer & Kennel */}
-            <div className="grid gap-4 grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>{t("groomer")}</Label>
-                <Select value={newGroomerId} onValueChange={(v) => setNewGroomerId(v ?? "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectGroomer")}>
-                      {newGroomerId
-                        ? (() => { const g = formData.groomers.find((g) => g.id === newGroomerId); return g ? `${g.firstName} ${g.lastName}` : t("selectGroomer"); })()
-                        : t("selectGroomer")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.groomers.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.firstName} {g.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("cage")}</Label>
-                <Select value={newKennelId} onValueChange={(v) => setNewKennelId(v ?? "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectCage")}>
-                      {newKennelId
-                        ? (() => { const k = compatibleNewKennels.find((k) => k.id === newKennelId); return k ? `${k.name} (${k.size})` : t("selectCage"); })()
-                        : t("selectCage")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {compatibleNewKennels.map((k) => (
-                      <SelectItem key={k.id} value={k.id}>
-                        {k.name} ({k.size})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Groomer */}
+            <div className="space-y-1.5">
+              <Label>{t("groomer")}</Label>
+              <Select value={newGroomerId} onValueChange={(v) => setNewGroomerId(v ?? "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("selectGroomer")}>
+                    {newGroomerId
+                      ? (() => { const g = formData.groomers.find((g) => g.id === newGroomerId); return g ? `${g.firstName} ${g.lastName}` : t("selectGroomer"); })()
+                      : t("selectGroomer")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.groomers.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.firstName} {g.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Services */}

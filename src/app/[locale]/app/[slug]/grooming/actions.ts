@@ -419,7 +419,6 @@ export async function createGroomingAppointment(data: {
   petId: string;
   scheduledAt: string; // ISO datetime
   groomerId?: string;
-  kennelId?: string;
   services: string[]; // service names
   specialInstructions?: string;
   petSize: string;
@@ -457,12 +456,11 @@ export async function createGroomingAppointment(data: {
       petId: data.petId,
       appointmentId: appointment.id,
       groomerId: data.groomerId || null,
-      kennelId: data.kennelId || null,
+      kennelId: null,
       petSize: (data.petSize || "MEDIUM") as KennelSize,
       services: data.services,
       specialInstructions: data.specialInstructions || null,
       scheduledAt: scheduledDate,
-      kennelAssignedAt: data.kennelId ? new Date() : null,
     },
   });
 

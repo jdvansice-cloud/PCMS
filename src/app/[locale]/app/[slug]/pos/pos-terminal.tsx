@@ -1227,7 +1227,14 @@ export function PosTerminal({
                     onValueChange={(v) => handleOwnerChange(v ?? "")}
                   >
                     <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder={t("noClient")} />
+                      <SelectValue placeholder={t("noClient")}>
+                        {ownerId
+                          ? (() => {
+                              const o = data.owners.find((o) => o.id === ownerId);
+                              return o ? `${o.firstName} ${o.lastName}` : t("noClient");
+                            })()
+                          : t("noClient")}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {data.owners.map((o) => (

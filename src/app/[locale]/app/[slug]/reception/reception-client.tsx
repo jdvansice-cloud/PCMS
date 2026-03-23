@@ -370,7 +370,11 @@ export function ReceptionClient({
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={t("selectOwner")} />
+                        <SelectValue placeholder={t("selectOwner")}>
+                          {selectedOwnerId
+                            ? (() => { const o = data.owners.find((o) => o.id === selectedOwnerId); return o ? `${o.firstName} ${o.lastName}` : t("selectOwner"); })()
+                            : t("selectOwner")}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {data.owners.map((o) => (
@@ -389,7 +393,11 @@ export function ReceptionClient({
                       disabled={!selectedOwnerId}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={t("selectPet")} />
+                        <SelectValue placeholder={t("selectPet")}>
+                          {selectedPetId
+                            ? (() => { const p = selectedOwner?.pets.find((p) => p.id === selectedPetId); return p ? `${p.name}${p.size ? ` (${p.size})` : ""}` : t("selectPet"); })()
+                            : t("selectPet")}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {selectedOwner?.pets.map((p) => (
@@ -411,7 +419,11 @@ export function ReceptionClient({
                       <Label>{t("selectGroomer")}</Label>
                       <Select value={selectedGroomerId} onValueChange={(v) => setSelectedGroomerId(v ?? "")}>
                         <SelectTrigger>
-                          <SelectValue placeholder={t("selectGroomer")} />
+                          <SelectValue placeholder={t("selectGroomer")}>
+                            {selectedGroomerId
+                              ? (() => { const g = data.groomers.find((g) => g.id === selectedGroomerId); return g ? `${g.firstName} ${g.lastName}` : t("selectGroomer"); })()
+                              : t("selectGroomer")}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {data.groomers.map((g) => (
@@ -506,7 +518,11 @@ export function ReceptionClient({
                       <Label>{t("selectVet")}</Label>
                       <Select value={selectedVetId} onValueChange={(v) => setSelectedVetId(v ?? "")}>
                         <SelectTrigger>
-                          <SelectValue placeholder={t("selectVet")} />
+                          <SelectValue placeholder={t("selectVet")}>
+                            {selectedVetId
+                              ? (() => { const v = data.vets.find((v) => v.id === selectedVetId); return v ? `${v.firstName} ${v.lastName}` : t("selectVet"); })()
+                              : t("selectVet")}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {data.vets.map((v) => (
@@ -521,7 +537,11 @@ export function ReceptionClient({
                       <Label>{t("selectService")}</Label>
                       <Select value={selectedServiceId} onValueChange={(v) => setSelectedServiceId(v ?? "")}>
                         <SelectTrigger>
-                          <SelectValue placeholder={t("selectService")} />
+                          <SelectValue placeholder={t("selectService")}>
+                            {selectedServiceId
+                              ? (() => { const s = clinicServices.find((s) => s.id === selectedServiceId); return s ? `${s.name} (${s.durationMin} min)` : t("selectService"); })()
+                              : t("selectService")}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {clinicServices.map((s) => (

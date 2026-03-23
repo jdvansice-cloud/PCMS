@@ -284,7 +284,11 @@ export function UsersClient({ initialUsers, initialRoles }: UsersClientProps) {
                         onValueChange={(v) => handleRoleChange(u.id, v ?? "")}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={t("selectUserRole")} />
+                          <SelectValue placeholder={t("selectUserRole")}>
+                            {u.roleId
+                              ? (roles.find((r) => r.id === u.roleId)?.name ?? t("selectUserRole"))
+                              : t("selectUserRole")}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {roles.map((r) => (
@@ -334,7 +338,11 @@ export function UsersClient({ initialUsers, initialRoles }: UsersClientProps) {
                           }
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder={t("selectUserRole")} />
+                            <SelectValue placeholder={t("selectUserRole")}>
+                              {u.roleId
+                                ? (roles.find((r) => r.id === u.roleId)?.name ?? t("selectUserRole"))
+                                : t("selectUserRole")}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {roles.map((r) => (

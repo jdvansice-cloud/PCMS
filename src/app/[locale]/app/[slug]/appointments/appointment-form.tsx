@@ -57,7 +57,11 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectClient")} />
+                    <SelectValue placeholder={t("selectClient")}>
+                      {selectedOwner
+                        ? `${selectedOwner.firstName} ${selectedOwner.lastName}`
+                        : t("selectClient")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {data.owners.map((o) => (
@@ -106,7 +110,11 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                   onValueChange={(v) => setSelectedServiceId(v ?? "")}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("selectService")} />
+                    <SelectValue placeholder={t("selectService")}>
+                      {selectedService
+                        ? `${selectedService.name} (${selectedService.durationMin} min)`
+                        : t("selectService")}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {data.services.map((s) => (
