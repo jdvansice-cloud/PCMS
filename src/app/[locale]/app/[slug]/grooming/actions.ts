@@ -61,19 +61,34 @@ export async function getGroomingBoard(dateStr: string) {
   );
 
   // Also check all sessions today (including picked-up ones) for occupied kennels
-  const allSessionsToday = await prisma.groomingSession.findMany({
-    where: {
-      organizationId,
-      branchId: branch.id,
-      scheduledAt: { gte: dayStart, lte: dayEnd },
-      kennelId: { not: null },
-      kennelReleasedAt: null,
-      status: { notIn: ["COMPLETED", "CANCELLED"] },
-    },
-    select: { kennelId: true },
-  });
+  const [allSessionsToday, clinicApptsWithKennel] = await Promise.all([
+    prisma.groomingSession.findMany({
+      where: {
+        organizationId,
+        branchId: branch.id,
+        scheduledAt: { gte: dayStart, lte: dayEnd },
+        kennelId: { not: null },
+        kennelReleasedAt: null,
+        status: { notIn: ["COMPLETED", "CANCELLED"] },
+      },
+      select: { kennelId: true },
+    }),
+    prisma.appointment.findMany({
+      where: {
+        organizationId,
+        branchId: branch.id,
+        kennelId: { not: null },
+        status: "IN_PROGRESS",
+        type: { not: "GROOMING" },
+      },
+      select: { kennelId: true },
+    }),
+  ]);
   for (const s of allSessionsToday) {
     if (s.kennelId) occupiedKennelIds.add(s.kennelId);
+  }
+  for (const a of clinicApptsWithKennel) {
+    if (a.kennelId) occupiedKennelIds.add(a.kennelId);
   }
 
   const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 4 };
@@ -536,6 +551,18 @@ export async function getKennelOccupancy(dateStr: string) {
           scheduledAt: { gte: dayStart, lte: dayEnd },
           status: { notIn: ["COMPLETED", "CANCELLED"] },
           kennelReleasedAt: null,
+        },
+        include: {
+          pet: { select: { name: true } },
+        },
+        take: 1,
+      },
+      appointments: {
+        where: {
+          scheduledAt: { gte: dayStart, lte: dayEnd },
+          status: "IN_PROGRESS",
+          type: { not: "GROOMING" },
+          kennelId: { not: null },
         },
         include: {
           pet: { select: { name: true } },

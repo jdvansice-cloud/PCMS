@@ -149,9 +149,18 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
   });
   if (!current) return { error: "No encontrado" };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateData: any = { status };
+  if (status === "IN_PROGRESS" && !current.checkedInAt) {
+    updateData.checkedInAt = new Date();
+  }
+  if (status === "COMPLETED" && current.kennelId) {
+    updateData.kennelId = null;
+  }
+
   await prisma.appointment.update({
     where: { id },
-    data: { status },
+    data: updateData,
   });
 
   await createAuditLog({
@@ -182,4 +191,158 @@ export async function deleteAppointment(id: string) {
 
   revalidatePath(`/app/${slug}/appointments`);
   redirect(`/app/${slug}/appointments`);
+}
+
+// ---------------------------------------------------------------------------
+// getAppointmentBoard — today's clinic appointments grouped by status
+// ---------------------------------------------------------------------------
+export async function getAppointmentBoard(dateStr: string) {
+  const { organizationId } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) return { appointments: [], branchId: "" };
+
+  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      organizationId,
+      branchId: branch.id,
+      type: { not: "GROOMING" },
+      scheduledAt: { gte: dayStart, lte: dayEnd },
+      // Hide picked-up appointments
+      pickedUpAt: null,
+    },
+    include: {
+      owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      pet: { select: { id: true, name: true, species: true, breed: true, size: true } },
+      vet: { select: { id: true, firstName: true, lastName: true } },
+      service: { select: { id: true, name: true, durationMin: true } },
+      kennel: { select: { id: true, name: true, size: true } },
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+
+  return { appointments, branchId: branch.id };
+}
+
+// ---------------------------------------------------------------------------
+// getKennelOccupancyAll — all kennels with occupant info for both clinic & grooming
+// ---------------------------------------------------------------------------
+export async function getKennelOccupancyAll(dateStr: string) {
+  const { organizationId } = await getCurrentUser();
+
+  const branch = await prisma.branch.findFirst({
+    where: { organizationId, isMain: true },
+    select: { id: true },
+  });
+  if (!branch) return [];
+
+  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+  const kennels = await prisma.kennel.findMany({
+    where: { organizationId, branchId: branch.id },
+    include: {
+      groomingSessions: {
+        where: {
+          scheduledAt: { gte: dayStart, lte: dayEnd },
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+          kennelReleasedAt: null,
+        },
+        include: { pet: { select: { name: true } } },
+        take: 1,
+      },
+      appointments: {
+        where: {
+          scheduledAt: { gte: dayStart, lte: dayEnd },
+          status: "IN_PROGRESS",
+          type: { not: "GROOMING" },
+          kennelId: { not: null },
+        },
+        include: { pet: { select: { name: true } } },
+        take: 1,
+      },
+    },
+    orderBy: [{ size: "asc" }, { name: "asc" }],
+  });
+
+  return kennels;
+}
+
+// ---------------------------------------------------------------------------
+// assignKennelToAppointment
+// ---------------------------------------------------------------------------
+export async function assignKennelToAppointment(appointmentId: string, kennelId: string) {
+  const { organizationId, user, slug } = await getCurrentUser();
+
+  await prisma.appointment.update({
+    where: { id: appointmentId, organizationId },
+    data: { kennelId },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Appointment",
+    entityId: appointmentId,
+    changes: { kennelId: { old: null, new: kennelId } },
+  });
+
+  revalidatePath(`/app/${slug}/appointments`);
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// releaseKennelFromAppointment
+// ---------------------------------------------------------------------------
+export async function releaseKennelFromAppointment(appointmentId: string) {
+  const { organizationId, user, slug } = await getCurrentUser();
+
+  await prisma.appointment.update({
+    where: { id: appointmentId, organizationId },
+    data: { kennelId: null },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Appointment",
+    entityId: appointmentId,
+    changes: { kennelId: { old: "assigned", new: null } },
+  });
+
+  revalidatePath(`/app/${slug}/appointments`);
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// markAppointmentPickedUp
+// ---------------------------------------------------------------------------
+export async function markAppointmentPickedUp(appointmentId: string) {
+  const { organizationId, user, slug } = await getCurrentUser();
+
+  const now = new Date();
+  await prisma.appointment.update({
+    where: { id: appointmentId, organizationId },
+    data: { pickedUpAt: now, status: "COMPLETED", kennelId: null },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Appointment",
+    entityId: appointmentId,
+    changes: { pickedUpAt: { old: null, new: now.toISOString() } },
+  });
+
+  revalidatePath(`/app/${slug}/appointments`);
+  return { success: true };
 }

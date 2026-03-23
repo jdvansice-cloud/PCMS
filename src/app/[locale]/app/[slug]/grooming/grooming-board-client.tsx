@@ -42,7 +42,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar, Clock, Scissors, Stethoscope } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types inferred from server actions
@@ -829,24 +829,54 @@ export function GroomingBoardClient({
             </h3>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {kennels.map((kennel) => {
-                const occupant =
+                const groomingOccupant =
                   kennel.groomingSessions.length > 0
                     ? kennel.groomingSessions[0]
                     : null;
+                const clinicOccupant =
+                  "appointments" in kennel && (kennel as any).appointments?.length > 0
+                    ? (kennel as any).appointments[0]
+                    : null;
+                const occupied = groomingOccupant || clinicOccupant;
                 return (
                   <Card
                     key={kennel.id}
                     className={
-                      occupant
+                      groomingOccupant
+                        ? "border-purple-300 bg-purple-50"
+                        : clinicOccupant
                         ? "border-blue-300 bg-blue-50"
                         : "border-green-300 bg-green-50"
                     }
                   >
                     <CardContent className="p-2 text-center">
                       <p className="text-xs font-semibold">{kennel.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {occupant ? occupant.pet.name : t("empty")}
-                      </p>
+                      {occupied ? (
+                        <>
+                          <p className="text-[10px] text-muted-foreground">
+                            {groomingOccupant
+                              ? groomingOccupant.pet.name
+                              : clinicOccupant.pet.name}
+                          </p>
+                          <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                            {groomingOccupant ? (
+                              <Badge variant="secondary" className="text-[8px] px-1 py-0 gap-0.5">
+                                <Scissors className="h-2.5 w-2.5" />
+                                {t("title")}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[8px] px-1 py-0 gap-0.5">
+                                <Stethoscope className="h-2.5 w-2.5" />
+                                {t("clinic")}
+                              </Badge>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("empty")}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 );

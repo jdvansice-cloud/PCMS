@@ -197,7 +197,22 @@
     "selectClient": "Seleccionar cliente",
     "selectPet": "Seleccionar mascota",
     "selectVet": "Asignar después",
-    "selectService": "Seleccionar servicio"
+    "selectService": "Seleccionar servicio",
+    "boardDescription": "Tablero de citas del día",
+    "kennel": "Jaula",
+    "noKennel": "Sin jaula",
+    "noVet": "Sin veterinario",
+    "selectKennel": "Asignar jaula",
+    "releaseKennel": "Liberar",
+    "markPickedUp": "Marcar recogido",
+    "kennelOccupancy": "Ocupación de Jaulas",
+    "noKennels": "No hay jaulas configuradas",
+    "empty": "Vacía",
+    "clinic": "Clínica",
+    "moveTo": {
+      "IN_PROGRESS": "Iniciar visita",
+      "COMPLETED": "Completar"
+    }
   },
   "pos": {
     "title": "Punto de Venta",
@@ -729,6 +744,7 @@
     "cage": "Jaula",
     "selectCage": "Seleccionar jaula",
     "empty": "Vacía",
+    "clinic": "Clínica",
     "notes": "Notas",
     "services": "Servicios",
     "specialInstructions": "Instrucciones Especiales",

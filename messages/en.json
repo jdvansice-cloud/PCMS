@@ -197,7 +197,22 @@
     "selectClient": "Select client",
     "selectPet": "Select pet",
     "selectVet": "Assign later",
-    "selectService": "Select service"
+    "selectService": "Select service",
+    "boardDescription": "Today's appointments board",
+    "kennel": "Kennel",
+    "noKennel": "No kennel",
+    "noVet": "No vet",
+    "selectKennel": "Assign kennel",
+    "releaseKennel": "Release",
+    "markPickedUp": "Mark picked up",
+    "kennelOccupancy": "Kennel Occupancy",
+    "noKennels": "No kennels configured",
+    "empty": "Empty",
+    "clinic": "Clinic",
+    "moveTo": {
+      "IN_PROGRESS": "Start visit",
+      "COMPLETED": "Complete"
+    }
   },
   "pos": {
     "title": "Point of Sale",
@@ -728,6 +743,7 @@
     "cage": "Cage",
     "selectCage": "Select cage",
     "empty": "Empty",
+    "clinic": "Clinic",
     "notes": "Notes",
     "services": "Services",
     "specialInstructions": "Special Instructions",
