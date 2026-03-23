@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { SearchInput } from "@/components/search-input";
 import { Pagination } from "@/components/pagination";
 import { getAppointments } from "./actions";
+import { getOrgDateSettings, formatDateTimeServer } from "@/lib/format-date";
 
 const STATUS_COLORS: Record<string, string> = {
   SCHEDULED: "bg-[var(--status-scheduled)]/10 text-[var(--status-scheduled)]",
@@ -33,15 +34,13 @@ export default async function AppointmentsPage({
   const t = await getTranslations("appointments");
   const tc = await getTranslations("common");
 
-  const { appointments, totalPages } = await getAppointments(search, page, sp.status);
+  const [{ appointments, totalPages }, orgDate] = await Promise.all([
+    getAppointments(search, page, sp.status),
+    getOrgDateSettings(),
+  ]);
 
   function formatDate(d: Date) {
-    return new Date(d).toLocaleDateString("es-PA", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateTimeServer(d, orgDate.timezone, orgDate.locale);
   }
 
   return (

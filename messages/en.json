@@ -324,6 +324,8 @@
     "defaultLanguage": "Default language",
     "defaultLanguageDesc": "Interface language for all users in this organization",
     "selectLanguage": "Select language",
+    "timezone": "Timezone",
+    "timezoneDesc": "All dates and times in the system will use this timezone",
     "closed": "Closed",
     "to": "to",
     "preview": "Preview",

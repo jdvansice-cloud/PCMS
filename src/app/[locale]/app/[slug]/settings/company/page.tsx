@@ -22,7 +22,7 @@ export default function CompanySettingsPage() {
   const tf = useTranslations("form");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({
-    name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "", locale: "es" as string,
+    name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "", locale: "es" as string, timezone: "America/Panama" as string,
   });
 
   useEffect(() => {
@@ -37,6 +37,7 @@ export default function CompanySettingsPage() {
           address: info.address ?? "",
           website: info.website ?? "",
           locale: info.locale ?? "es",
+          timezone: info.timezone ?? "America/Panama",
         });
       }
     });
@@ -102,6 +103,38 @@ export default function CompanySettingsPage() {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {tf("defaultLanguageDesc")}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{tf("timezone")}</Label>
+                <Select value={data.timezone ?? "America/Panama"} onValueChange={(val) => setData({ ...data, timezone: val ?? "America/Panama" })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/Panama">Panama (UTC-5)</SelectItem>
+                    <SelectItem value="America/Bogota">Colombia (UTC-5)</SelectItem>
+                    <SelectItem value="America/Costa_Rica">Costa Rica (UTC-6)</SelectItem>
+                    <SelectItem value="America/Guatemala">Guatemala (UTC-6)</SelectItem>
+                    <SelectItem value="America/El_Salvador">El Salvador (UTC-6)</SelectItem>
+                    <SelectItem value="America/Tegucigalpa">Honduras (UTC-6)</SelectItem>
+                    <SelectItem value="America/Managua">Nicaragua (UTC-6)</SelectItem>
+                    <SelectItem value="America/Mexico_City">Mexico City (UTC-6)</SelectItem>
+                    <SelectItem value="America/Lima">Peru (UTC-5)</SelectItem>
+                    <SelectItem value="America/Guayaquil">Ecuador (UTC-5)</SelectItem>
+                    <SelectItem value="America/Caracas">Venezuela (UTC-4)</SelectItem>
+                    <SelectItem value="America/Santiago">Chile (UTC-3/-4)</SelectItem>
+                    <SelectItem value="America/Argentina/Buenos_Aires">Argentina (UTC-3)</SelectItem>
+                    <SelectItem value="America/Sao_Paulo">Brazil (UTC-3)</SelectItem>
+                    <SelectItem value="America/Santo_Domingo">Dominican Republic (UTC-4)</SelectItem>
+                    <SelectItem value="America/New_York">US Eastern (UTC-5/-4)</SelectItem>
+                    <SelectItem value="America/Chicago">US Central (UTC-6/-5)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">US Pacific (UTC-8/-7)</SelectItem>
+                    <SelectItem value="Europe/Madrid">Spain (UTC+1/+2)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {tf("timezoneDesc")}
                 </p>
               </div>
             </div>

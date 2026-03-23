@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
+import { useFormatDate } from "@/lib/use-format-date";
 import {
   checkInScheduledAppointment,
   createWalkInAppointment,
@@ -60,6 +61,7 @@ export function ReceptionClient({
   const t = useTranslations("reception");
   const tc = useTranslations("common");
   const tg = useTranslations("grooming");
+  const { formatTime } = useFormatDate();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -236,10 +238,7 @@ export function ReceptionClient({
                       <div className="flex items-center gap-4">
                         <div className="text-center min-w-[60px]">
                           <p className="text-lg font-bold">
-                            {new Date(appt.scheduledAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {formatTime(appt.scheduledAt)}
                           </p>
                         </div>
                         <div>
@@ -337,10 +336,7 @@ export function ReceptionClient({
                   </p>
                   <p className="text-muted-foreground">
                     {t("scheduled")}:{" "}
-                    {new Date(selectedAppointment.scheduledAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatTime(selectedAppointment.scheduledAt)}
                   </p>
                 </div>
               )}

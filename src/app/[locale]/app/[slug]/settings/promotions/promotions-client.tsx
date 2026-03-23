@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import {
   Plus,
   Pencil,
@@ -360,6 +361,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
   const router = useRouter();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
+  const { formatDate: fmtDate } = useFormatDate();
 
   const [data, setData] = useState(initialData);
   const [search, setSearch] = useState("");
@@ -627,7 +629,7 @@ export function PromotionsClient({ initialData }: PromotionsClientProps) {
   }
 
   function formatDateRange(promo: PromotionRow) {
-    const fmt = (d: Date | string) => new Date(d).toLocaleDateString();
+    const fmt = (d: Date | string) => fmtDate(d);
     return `${fmt(promo.startsAt)} - ${fmt(promo.endsAt)}`;
   }
 

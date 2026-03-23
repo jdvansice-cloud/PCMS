@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/page-header";
 import { formatCurrency } from "@/lib/utils";
 import { getSale } from "../../actions";
+import { getOrgDateSettings, formatDateServer } from "@/lib/format-date";
 
 const METHOD_LABELS: Record<string, string> = {
   CASH: "Efectivo",
@@ -27,6 +28,7 @@ export default async function SaleDetailPage({
   if (!sale) notFound();
 
   const t = await getTranslations("pos");
+  const orgDate = await getOrgDateSettings();
   const base = `/app/${slug}/pos`;
   const hasDiscount = Number(sale.discountAmount) > 0;
   const hasPromos = sale.promotions && sale.promotions.length > 0;
@@ -49,7 +51,7 @@ export default async function SaleDetailPage({
           </div>
 
           <div className="text-sm text-muted-foreground">
-            {new Date(sale.createdAt).toLocaleDateString("es-PA", {
+            {formatDateServer(sale.createdAt, orgDate.timezone, orgDate.locale, {
               weekday: "long",
               year: "numeric",
               month: "long",

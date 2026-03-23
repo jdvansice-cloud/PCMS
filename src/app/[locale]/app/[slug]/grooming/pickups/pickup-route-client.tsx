@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { useTenant } from "@/lib/tenant-context";
 import {
   getDailyPickups,
@@ -48,6 +49,7 @@ export function PickupRouteClient({
 }) {
   const t = useTranslations("grooming");
   const { organization } = useTenant();
+  const { formatTime } = useFormatDate();
   const [pickups, setPickups] = useState<Pickup[]>(initialPickups);
   const [date, setDate] = useState(initialDate);
   const [isPending, startTransition] = useTransition();
@@ -249,10 +251,7 @@ export function PickupRouteClient({
                     {pickup.deliveredAt && (
                       <span>
                         {t("deliveredAtLabel")}:{" "}
-                        {new Date(pickup.deliveredAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatTime(pickup.deliveredAt)}
                       </span>
                     )}
                   </div>

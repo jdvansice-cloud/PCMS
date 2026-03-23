@@ -324,6 +324,8 @@
     "defaultLanguage": "Idioma predeterminado",
     "defaultLanguageDesc": "Idioma de la interfaz para todos los usuarios de esta organización",
     "selectLanguage": "Seleccionar idioma",
+    "timezone": "Zona Horaria",
+    "timezoneDesc": "Todas las fechas y horas del sistema usarán esta zona horaria",
     "closed": "Cerrado",
     "to": "a",
     "preview": "Vista previa",

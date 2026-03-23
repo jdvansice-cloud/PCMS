@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
   const ti = useTranslations("inventory");
   const tf = useTranslations("form");
   const tp = useTranslations("pos");
+  const { formatDate } = useFormatDate();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -223,7 +225,7 @@ export function ProductDetail({ product: p, slug }: { product: Product; slug: st
               {p.expirationDate && (
                 <div>
                   <span className="text-muted-foreground">{ti("expiration")}:</span>{" "}
-                  {new Date(p.expirationDate).toLocaleDateString("es-PA")}
+                  {formatDate(p.expirationDate)}
                 </div>
               )}
               {p.batchNumber && (

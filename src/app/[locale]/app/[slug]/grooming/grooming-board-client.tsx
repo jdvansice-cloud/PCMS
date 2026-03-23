@@ -13,6 +13,7 @@ import {
   markGroomingPickedUp,
 } from "./actions";
 import { PageHeader } from "@/components/page-header";
+import { useFormatDate } from "@/lib/use-format-date";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -96,6 +97,7 @@ export function GroomingBoardClient({
   initialDate,
 }: Props) {
   const t = useTranslations("grooming");
+  const { formatTime } = useFormatDate();
   const [isPending, startTransition] = useTransition();
 
   const [date, setDate] = useState(initialDate);
@@ -345,7 +347,7 @@ export function GroomingBoardClient({
                       </span>
                     </div>
                     <div className="text-[10px] text-muted-foreground">
-                      {t("scheduledTime")}: {new Date(session.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {t("scheduledTime")}: {formatTime(session.scheduledAt)}
                     </div>
                     {/* Picked-up button for completed sessions */}
                     {status === "COMPLETED" && !session.pickedUpAt && (

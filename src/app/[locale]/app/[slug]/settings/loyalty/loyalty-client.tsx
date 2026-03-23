@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function LoyaltyClient({ initialConfig, initialTopHolders }: LoyaltyClien
   const router = useRouter();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
+  const { formatDate: fmtDate } = useFormatDate();
 
   const [config, setConfig] = useState<LoyaltyConfig>(initialConfig);
   const [saving, setSaving] = useState(false);
@@ -186,7 +188,7 @@ export function LoyaltyClient({ initialConfig, initialTopHolders }: LoyaltyClien
                     </TableCell>
                     <TableCell>{formatCurrency(holder.balance)}</TableCell>
                     <TableCell>
-                      {new Date(holder.lastActivity).toLocaleDateString()}
+                      {fmtDate(holder.lastActivity)}
                     </TableCell>
                   </TableRow>
                 ))}

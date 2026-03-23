@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import {
   Plus,
   Search,
@@ -73,6 +74,7 @@ export function GiftCardsClient({
   const router = useRouter();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
+  const { formatDate: fmtDate } = useFormatDate();
 
   // ── Denomination state ──────────────────────────────────────────────────
   const [denominations, setDenominations] =
@@ -245,7 +247,7 @@ export function GiftCardsClient({
 
   function formatDate(date: string | Date | null | undefined) {
     if (!date) return "---";
-    return new Date(date).toLocaleDateString();
+    return fmtDate(date);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────

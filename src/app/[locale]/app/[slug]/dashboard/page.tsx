@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { getOrgDateSettings, formatDateServer, formatTimeServer, formatDateTimeServer } from "@/lib/format-date";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -116,11 +117,12 @@ export default async function DashboardPage({
   const t = await getTranslations("dashboard");
   const ts = await getTranslations("dashboard.stats");
 
+  const orgDate = await getOrgDateSettings();
   const now = new Date();
   const hour = now.getHours();
   const greeting =
     hour < 12 ? t("greeting.morning") : hour < 18 ? t("greeting.afternoon") : t("greeting.evening");
-  const dateStr = now.toLocaleDateString("es-PA", {
+  const dateStr = formatDateServer(now, orgDate.timezone, orgDate.locale, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -265,10 +267,7 @@ export default async function DashboardPage({
                         {apt.pet?.name} — {apt.owner?.firstName} {apt.owner?.lastName}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(apt.scheduledAt).toLocaleTimeString("es-PA", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatTimeServer(apt.scheduledAt, orgDate.timezone, orgDate.locale)}
                         {apt.vet && ` · Dr. ${apt.vet.firstName}`}
                         {apt.type && ` · ${apt.type}`}
                       </p>
@@ -329,12 +328,7 @@ export default async function DashboardPage({
                         {entityLabels[log.entityType] || log.entityType}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(log.createdAt).toLocaleString("es-PA", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTimeServer(log.createdAt, orgDate.timezone, orgDate.locale)}
                       </p>
                     </div>
                   </div>

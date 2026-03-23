@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/search-input";
 import { Pagination } from "@/components/pagination";
 import { formatCurrency } from "@/lib/utils";
 import { getSales } from "../actions";
+import { getOrgDateSettings, formatDateServer } from "@/lib/format-date";
 
 function paymentLabels(
   payments: { paymentMethod: string; amount: unknown }[],
@@ -40,7 +41,10 @@ export default async function SalesPage({
   const tc = await getTranslations("common");
   const base = `/app/${slug}/pos`;
 
-  const { sales, totalPages } = await getSales(search, page);
+  const [{ sales, totalPages }, orgDate] = await Promise.all([
+    getSales(search, page),
+    getOrgDateSettings(),
+  ]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -132,7 +136,7 @@ export default async function SalesPage({
                       <Badge variant="secondary" className="text-xs">{s.status}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {new Date(s.createdAt).toLocaleDateString("es-PA")}
+                      {formatDateServer(s.createdAt, orgDate.timezone, orgDate.locale)}
                     </TableCell>
                   </TableRow>
                 ))}

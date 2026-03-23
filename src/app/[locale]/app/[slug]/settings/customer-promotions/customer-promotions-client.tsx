@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import {
   Plus,
   Pencil,
@@ -231,6 +232,7 @@ export function LoyaltyPromotionsClient({ initialData }: LoyaltyPromotionsClient
   const router = useRouter();
   const t = useTranslations("settings");
   const tc = useTranslations("common");
+  const { formatDate: fmtDate } = useFormatDate();
 
   const [data, setData] = useState(initialData);
   const [search, setSearch] = useState("");
@@ -407,8 +409,7 @@ export function LoyaltyPromotionsClient({ initialData }: LoyaltyPromotionsClient
   }
 
   function formatDateRange(promo: LoyaltyPromoRow) {
-    const fmt = (d: Date | string) => new Date(d).toLocaleDateString();
-    return `${fmt(promo.startsAt)} - ${fmt(promo.endsAt)}`;
+    return `${fmtDate(promo.startsAt)} - ${fmtDate(promo.endsAt)}`;
   }
 
   function getQualifyingItems(promo: LoyaltyPromoRow) {

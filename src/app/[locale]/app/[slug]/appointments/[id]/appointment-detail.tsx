@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/use-format-date";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +55,7 @@ export function AppointmentDetail({
   const tc = useTranslations("common");
   const ta = useTranslations("appointments");
   const tf = useTranslations("form");
+  const { formatDateLong, formatTime } = useFormatDate();
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const base = `/app/${slug}/appointments`;
@@ -109,19 +111,11 @@ export function AppointmentDetail({
               </div>
               <div>
                 <span className="text-muted-foreground">{tc("date")}:</span>{" "}
-                {new Date(a.scheduledAt).toLocaleDateString("es-PA", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {formatDateLong(a.scheduledAt)}
               </div>
               <div>
                 <span className="text-muted-foreground">{tc("time")}:</span>{" "}
-                {new Date(a.scheduledAt).toLocaleTimeString("es-PA", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatTime(a.scheduledAt)}
               </div>
               <div>
                 <span className="text-muted-foreground">{ta("type")}:</span>{" "}
