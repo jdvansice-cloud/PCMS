@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   Calendar,
   ChevronLeft,
+  ClipboardCheck,
   ClipboardList,
   Dog,
   LayoutDashboard,
@@ -42,6 +43,7 @@ export function AppSidebar({ slug }: { slug: string }) {
 
   const navItems: NavItem[] = [
     { nameKey: "dashboard", href: `${base}/dashboard`, icon: LayoutDashboard, section: "DASHBOARD" },
+    { nameKey: "reception", href: `${base}/reception`, icon: ClipboardCheck, section: "APPOINTMENTS" },
     { nameKey: "clients", href: `${base}/clients`, icon: Users, section: "CLIENTS" },
     { nameKey: "pets", href: `${base}/pets`, icon: Dog, section: "PETS" },
     { nameKey: "appointments", href: `${base}/appointments`, icon: Calendar, section: "APPOINTMENTS" },

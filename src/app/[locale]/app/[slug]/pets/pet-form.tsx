@@ -96,6 +96,20 @@ export function PetForm({
                 <Input name="weight" type="number" step="0.01" />
               </div>
               <div className="space-y-1.5">
+                <Label>{t("size")}</Label>
+                <Select name="size">
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("sizeLabels.selectSize")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SMALL">{t("sizeLabels.SMALL")}</SelectItem>
+                    <SelectItem value="MEDIUM">{t("sizeLabels.MEDIUM")}</SelectItem>
+                    <SelectItem value="LARGE">{t("sizeLabels.LARGE")}</SelectItem>
+                    <SelectItem value="XL">{t("sizeLabels.XL")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label>{t("color")}</Label>
                 <Input name="color" />
               </div>

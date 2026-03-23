@@ -83,7 +83,8 @@
     "inventory": "Inventario",
     "services": "Servicios",
     "reports": "Reportes",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "reception": "Recepción"
   },
   "dashboard": {
     "greeting": {
@@ -153,6 +154,14 @@
       "MALE": "Macho",
       "FEMALE": "Hembra",
       "UNKNOWN": "Desconocido"
+    },
+    "size": "Tamaño",
+    "sizeLabels": {
+      "selectSize": "Seleccionar tamaño",
+      "SMALL": "Pequeño (S)",
+      "MEDIUM": "Mediano (M)",
+      "LARGE": "Grande (L)",
+      "XL": "Extra Grande (XL)"
     }
   },
   "appointments": {
@@ -750,7 +759,43 @@
       "SMALL": "Pequeño",
       "MEDIUM": "Mediano",
       "LARGE": "Grande"
-    }
+    },
+    "confirmCompleteTitle": "¿Marcar como Completado?",
+    "confirmCompleteDesc": "Esto notificará al dueño que su mascota está lista para recoger.",
+    "markPickedUp": "Marcar Recogida",
+    "petPickedUp": "Mascota recogida",
+    "petInfo": "Info de Mascota",
+    "breed": "Raza",
+    "color": "Color",
+    "size": "Tamaño",
+    "scheduledTime": "Programado"
+  },
+  "reception": {
+    "title": "Recepción de Mascotas",
+    "description": "Registrar entrada de mascotas para peluquería o consulta clínica",
+    "searchPlaceholder": "Buscar por nombre de mascota o dueño...",
+    "scheduledAppointments": "Citas Programadas",
+    "noScheduledToday": "No hay citas programadas para hoy",
+    "walkIn": "Sin cita",
+    "newWalkIn": "Nueva Entrada",
+    "chooseType": "Tipo de Visita",
+    "groomingVisit": "Peluquería",
+    "clinicVisit": "Consulta Clínica",
+    "selectKennel": "Seleccionar Jaula",
+    "noAvailableKennels": "No hay jaulas disponibles para este tamaño",
+    "checkIn": "Registrar Entrada",
+    "checkedIn": "Entrada registrada exitosamente",
+    "selectPet": "Seleccionar mascota",
+    "selectOwner": "Seleccionar dueño",
+    "selectService": "Seleccionar servicio",
+    "selectGroomer": "Seleccionar peluquero",
+    "selectVet": "Seleccionar veterinario",
+    "reason": "Motivo",
+    "specialInstructions": "Instrucciones Especiales",
+    "petSize": "Tamaño de Mascota",
+    "scheduled": "Programada",
+    "time": "Hora",
+    "today": "Hoy"
   },
   "booking": {
     "title": "Reservar Cita de Peluquería",

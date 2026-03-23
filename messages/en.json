@@ -83,7 +83,8 @@
     "inventory": "Inventory",
     "services": "Services",
     "reports": "Reports",
-    "settings": "Settings"
+    "settings": "Settings",
+    "reception": "Reception"
   },
   "dashboard": {
     "greeting": {
@@ -153,6 +154,14 @@
       "MALE": "Male",
       "FEMALE": "Female",
       "UNKNOWN": "Unknown"
+    },
+    "size": "Size",
+    "sizeLabels": {
+      "selectSize": "Select size",
+      "SMALL": "Small (S)",
+      "MEDIUM": "Medium (M)",
+      "LARGE": "Large (L)",
+      "XL": "Extra Large (XL)"
     }
   },
   "appointments": {
@@ -749,7 +758,43 @@
       "SMALL": "Small",
       "MEDIUM": "Medium",
       "LARGE": "Large"
-    }
+    },
+    "confirmCompleteTitle": "Mark as Completed?",
+    "confirmCompleteDesc": "This will notify the owner that their pet is ready for pickup.",
+    "markPickedUp": "Mark Picked Up",
+    "petPickedUp": "Pet has been picked up",
+    "petInfo": "Pet Info",
+    "breed": "Breed",
+    "color": "Color",
+    "size": "Size",
+    "scheduledTime": "Scheduled"
+  },
+  "reception": {
+    "title": "Pet Reception",
+    "description": "Check in pets for grooming or clinic visits",
+    "searchPlaceholder": "Search by pet name or owner...",
+    "scheduledAppointments": "Scheduled Appointments",
+    "noScheduledToday": "No scheduled appointments for today",
+    "walkIn": "Walk-in",
+    "newWalkIn": "New Walk-in",
+    "chooseType": "Type of Visit",
+    "groomingVisit": "Grooming",
+    "clinicVisit": "Clinic Visit",
+    "selectKennel": "Select Kennel",
+    "noAvailableKennels": "No available kennels for this pet size",
+    "checkIn": "Check In",
+    "checkedIn": "Checked in successfully",
+    "selectPet": "Select pet",
+    "selectOwner": "Select owner",
+    "selectService": "Select service",
+    "selectGroomer": "Select groomer",
+    "selectVet": "Select veterinarian",
+    "reason": "Reason",
+    "specialInstructions": "Special Instructions",
+    "petSize": "Pet Size",
+    "scheduled": "Scheduled",
+    "time": "Time",
+    "today": "Today"
   },
   "booking": {
     "title": "Book Grooming Appointment",

@@ -527,6 +527,7 @@ model Pet {
   dateOfBirth    DateTime? @map("date_of_birth")
   weight         Decimal?  @db.Decimal(5, 2)
   color          String?
+  size           KennelSize? @map("size")
   microchipId    String?   @map("microchip_id")
   photoUrl       String?   @map("photo_url")
   allergies      String?
@@ -696,6 +697,9 @@ model Appointment {
   reason          String?
   notes           String?
   isPublicBooking Boolean           @default(false) @map("is_public_booking")
+  isWalkIn        Boolean           @default(false) @map("is_walk_in")
+  checkedInAt     DateTime?         @map("checked_in_at")
+  pickedUpAt      DateTime?         @map("picked_up_at")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -879,6 +883,7 @@ model GroomingSession {
   scheduledAt         DateTime       @map("scheduled_at")
   startedAt           DateTime?      @map("started_at")
   completedAt         DateTime?      @map("completed_at")
+  pickedUpAt          DateTime?      @map("picked_up_at")
   kennelAssignedAt    DateTime?      @map("kennel_assigned_at")
   kennelReleasedAt    DateTime?      @map("kennel_released_at")
   petSize             KennelSize?    @map("pet_size")

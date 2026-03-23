@@ -13,7 +13,7 @@ const PAGE_SIZE = 20;
 export async function getAppointments(search?: string, page = 1, status?: string) {
   const { organizationId } = await getCurrentUser();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { organizationId };
+  const where: any = { organizationId, type: { not: "GROOMING" } };
 
   if (status && status !== "ALL") {
     where.status = status as AppointmentStatus;

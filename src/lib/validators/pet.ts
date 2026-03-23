@@ -6,6 +6,7 @@ export const petSchema = z.object({
   species: z.enum(["DOG", "CAT", "BIRD", "REPTILE", "RODENT", "OTHER"]),
   breed: z.string().max(100).optional().or(z.literal("")),
   sex: z.enum(["MALE", "FEMALE", "UNKNOWN"]),
+  size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL"]).optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   weight: z.string().optional().or(z.literal("")),
   color: z.string().max(50).optional().or(z.literal("")),

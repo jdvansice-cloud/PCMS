@@ -26,9 +26,15 @@ export async function getGroomingBoard(dateStr: string) {
       organizationId,
       branchId: branch.id,
       scheduledAt: { gte: dayStart, lte: dayEnd },
+      pickedUpAt: null, // hide picked-up sessions from the board
     },
     include: {
-      pet: { include: { owner: true } },
+      pet: {
+        select: {
+          id: true, name: true, species: true, breed: true, color: true, size: true,
+          owner: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        },
+      },
       groomer: { select: { id: true, firstName: true, lastName: true } },
       kennel: true,
       appointment: { include: { groomingPickup: true } },
@@ -41,7 +47,7 @@ export async function getGroomingBoard(dateStr: string) {
     orderBy: [{ size: "asc" }, { name: "asc" }],
   });
 
-  // Group available kennels by size — exclude those currently occupied by a non-completed/cancelled session today
+  // Group available kennels — exclude those currently occupied
   const occupiedKennelIds = new Set(
     sessions
       .filter(
@@ -54,16 +60,42 @@ export async function getGroomingBoard(dateStr: string) {
       .map((s) => s.kennelId!)
   );
 
-  const availableKennels: Record<string, typeof kennels> = {};
-  for (const k of kennels) {
-    if (!occupiedKennelIds.has(k.id)) {
-      const key = k.size as string;
-      if (!availableKennels[key]) availableKennels[key] = [];
-      availableKennels[key].push(k);
-    }
+  // Also check all sessions today (including picked-up ones) for occupied kennels
+  const allSessionsToday = await prisma.groomingSession.findMany({
+    where: {
+      organizationId,
+      branchId: branch.id,
+      scheduledAt: { gte: dayStart, lte: dayEnd },
+      kennelId: { not: null },
+      kennelReleasedAt: null,
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+    },
+    select: { kennelId: true },
+  });
+  for (const s of allSessionsToday) {
+    if (s.kennelId) occupiedKennelIds.add(s.kennelId);
   }
 
-  return { sessions, kennels, availableKennels, branchId: branch.id };
+  const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 4 };
+
+  // Available kennels indexed by minimum pet size they can serve
+  const availableKennels: Record<string, typeof kennels> = {};
+  const freeKennels = kennels.filter((k) => !occupiedKennelIds.has(k.id));
+
+  // Group by the kennel's own size (backwards compatible)
+  for (const k of freeKennels) {
+    const key = k.size as string;
+    if (!availableKennels[key]) availableKennels[key] = [];
+    availableKennels[key].push(k);
+  }
+
+  // Helper: get compatible kennels for a given pet size (same size or larger)
+  function getCompatibleKennels(petSize: string) {
+    const minOrder = SIZE_ORDER[petSize] ?? 1;
+    return freeKennels.filter((k) => (SIZE_ORDER[k.size] ?? 0) >= minOrder);
+  }
+
+  return { sessions, kennels, availableKennels, freeKennels, branchId: branch.id };
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +311,45 @@ export async function updateGroomingStatus(
 
   revalidatePath(`/app`);
   return session;
+}
+
+// ---------------------------------------------------------------------------
+// markGroomingPickedUp
+// ---------------------------------------------------------------------------
+export async function markGroomingPickedUp(sessionId: string) {
+  const { organizationId, user } = await getCurrentUser();
+
+  const session = await prisma.groomingSession.findUnique({
+    where: { id: sessionId, organizationId },
+  });
+  if (!session) throw new Error("Session not found");
+
+  const now = new Date();
+
+  await prisma.groomingSession.update({
+    where: { id: sessionId },
+    data: { pickedUpAt: now },
+  });
+
+  // Also update the linked appointment if it exists
+  if (session.appointmentId) {
+    await prisma.appointment.update({
+      where: { id: session.appointmentId },
+      data: { pickedUpAt: now, status: "COMPLETED" },
+    });
+  }
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "GroomingSession",
+    entityId: sessionId,
+    changes: { pickedUpAt: { old: null, new: now.toISOString() } },
+  });
+
+  revalidatePath(`/app`);
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------

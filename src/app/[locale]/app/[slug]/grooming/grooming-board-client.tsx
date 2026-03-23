@@ -10,6 +10,7 @@ import {
   assignGroomer,
   updateGroomingStatus,
   getKennelOccupancy,
+  markGroomingPickedUp,
 } from "./actions";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,8 @@ export function GroomingBoardClient({
   const [groomers] = useState<GroomerList>(initialGroomers);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
+  const [pendingCompleteSession, setPendingCompleteSession] = useState<Session | null>(null);
   const [kennelOccupancy, setKennelOccupancy] =
     useState<KennelOccupancy | null>(null);
 
@@ -185,6 +188,11 @@ export function GroomingBoardClient({
     newStatus: "PENDING" | "IN_PROGRESS" | "COMPLETED"
   ) => {
     if (!selectedSession) return;
+    if (newStatus === "COMPLETED") {
+      setPendingCompleteSession(selectedSession);
+      setConfirmCompleteOpen(true);
+      return;
+    }
     startTransition(async () => {
       await updateGroomingStatus(selectedSession.id, newStatus);
       refreshBoard();
@@ -193,15 +201,39 @@ export function GroomingBoardClient({
     });
   };
 
+  const handleConfirmComplete = () => {
+    if (!pendingCompleteSession) return;
+    startTransition(async () => {
+      await updateGroomingStatus(pendingCompleteSession.id, "COMPLETED");
+      refreshBoard();
+      setConfirmCompleteOpen(false);
+      setPendingCompleteSession(null);
+      setDialogOpen(false);
+      setSelectedSession(null);
+    });
+  };
+
+  const handlePickedUp = (session: Session) => {
+    startTransition(async () => {
+      await markGroomingPickedUp(session.id);
+      refreshBoard();
+    });
+  };
+
   const openDetail = (session: Session) => {
     setSelectedSession(session);
     setDialogOpen(true);
   };
 
-  // -- Available kennels for the selected session's petSize -----------------
-  const availableKennelsForSession = selectedSession?.petSize
-    ? data.availableKennels[selectedSession.petSize] ?? []
-    : [];
+  // -- Available kennels for the selected session's petSize (same size or larger)
+  const SIZE_ORDER: Record<string, number> = { SMALL: 1, MEDIUM: 2, LARGE: 3, XL: 4 };
+  const availableKennelsForSession = (() => {
+    if (!selectedSession?.petSize) return [];
+    const minOrder = SIZE_ORDER[selectedSession.petSize] ?? 1;
+    return (data.freeKennels ?? []).filter(
+      (k) => (SIZE_ORDER[k.size] ?? 0) >= minOrder
+    );
+  })();
 
   // -- Kennel occupancy grouped by size -------------------------------------
   const kennelsBySize: Record<string, KennelOccupancy> = {};
@@ -266,16 +298,29 @@ export function GroomingBoardClient({
                       <span className="font-semibold text-sm">
                         {session.pet.name}
                       </span>
-                      {session.appointment?.groomingPickup && (
-                        <span title={t("pickup")} className="text-base">
-                          {"\uD83D\uDE90"}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {session.petSize && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {session.petSize}
+                          </Badge>
+                        )}
+                        {session.appointment?.groomingPickup && (
+                          <span title={t("pickup")} className="text-base">
+                            {"\uD83D\uDE90"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {session.pet.owner.firstName}{" "}
                       {session.pet.owner.lastName}
                     </p>
+                    {/* Pet details */}
+                    <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-2">
+                      {session.pet.species && <span>{session.pet.species}</span>}
+                      {session.pet.breed && <span>· {session.pet.breed}</span>}
+                      {session.pet.color && <span>· {session.pet.color}</span>}
+                    </div>
                     <div className="flex flex-wrap gap-1">
                       {session.services.map((svc) => (
                         <Badge
@@ -299,6 +344,24 @@ export function GroomingBoardClient({
                           : t("noGroomer")}
                       </span>
                     </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {t("scheduledTime")}: {new Date(session.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    {/* Picked-up button for completed sessions */}
+                    {status === "COMPLETED" && !session.pickedUpAt && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePickedUp(session);
+                        }}
+                        disabled={isPending}
+                      >
+                        {t("markPickedUp")}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -430,6 +493,26 @@ export function GroomingBoardClient({
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm Complete Dialog ─────────────────────────────── */}
+      <Dialog open={confirmCompleteOpen} onOpenChange={setConfirmCompleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("confirmCompleteTitle")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            {t("confirmCompleteDesc")}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCompleteOpen(false)}>
+              {t("cancelled") || "Cancel"}
+            </Button>
+            <Button onClick={handleConfirmComplete} disabled={isPending}>
+              {t("moveTo.COMPLETED")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

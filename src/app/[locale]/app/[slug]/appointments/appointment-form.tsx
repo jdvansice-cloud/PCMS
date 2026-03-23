@@ -127,7 +127,6 @@ export function AppointmentForm({ data, slug }: { data: FormData; slug: string }
                     <SelectItem value="CONSULTATION">{t("typeLabels.CONSULTATION")}</SelectItem>
                     <SelectItem value="VACCINATION">{t("typeLabels.VACCINATION")}</SelectItem>
                     <SelectItem value="SURGERY">{t("typeLabels.SURGERY")}</SelectItem>
-                    <SelectItem value="GROOMING">{t("typeLabels.GROOMING")}</SelectItem>
                     <SelectItem value="FOLLOW_UP">{t("typeLabels.FOLLOW_UP")}</SelectItem>
                     <SelectItem value="EMERGENCY">{t("typeLabels.EMERGENCY")}</SelectItem>
                     <SelectItem value="OTHER">{t("typeLabels.OTHER")}</SelectItem>

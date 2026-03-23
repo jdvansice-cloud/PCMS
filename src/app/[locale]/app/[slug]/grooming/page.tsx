@@ -19,7 +19,7 @@ export default async function GroomingPage() {
   } catch {
     return (
       <GroomingBoardClient
-        initialData={{ sessions: [], kennels: [], availableKennels: {}, branchId: "" }}
+        initialData={{ sessions: [], kennels: [], availableKennels: {}, freeKennels: [], branchId: "" }}
         initialGroomers={[]}
         initialDate={today}
       />
