@@ -1682,7 +1682,6 @@ export function PosTerminal({
                     ).map(([method, label]) => {
                       const hasPayment = payments.some((p) => p.method === method);
                       const noBalance = payments.length > 0 && remainingToPay <= 0.01;
-                      const maxPayments = payments.length >= 4;
                       return (
                         <Button
                           key={method}
@@ -1690,7 +1689,7 @@ export function PosTerminal({
                           size="sm"
                           className="h-8 text-xs gap-1"
                           onClick={() => handleQuickPay(method as PaymentMethod)}
-                          disabled={noBalance || maxPayments}
+                          disabled={noBalance}
                         >
                           {method === "CARD" ? (
                             <CreditCard className="h-3 w-3" />
