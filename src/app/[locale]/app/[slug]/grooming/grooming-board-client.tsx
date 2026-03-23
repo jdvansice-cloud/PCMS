@@ -276,7 +276,7 @@ export function GroomingBoardClient({
   };
 
   const handleCreateAppointment = () => {
-    if (!newOwnerId || !newPetId) return;
+    if (!newOwnerId || !newPetId || newServices.length === 0) return;
     startTransition(async () => {
       await createGroomingAppointment({
         ownerId: newOwnerId,
@@ -773,7 +773,7 @@ export function GroomingBoardClient({
             {/* Services */}
             {newPetId && (
               <div className="space-y-1.5">
-                <Label>{t("services")}</Label>
+                <Label>{t("services")} *</Label>
                 <div className="flex flex-wrap gap-2">
                   {availableNewServices.map((svc) => (
                     <Badge
@@ -808,7 +808,7 @@ export function GroomingBoardClient({
             </Button>
             <Button
               onClick={handleCreateAppointment}
-              disabled={isPending || !newOwnerId || !newPetId}
+              disabled={isPending || !newOwnerId || !newPetId || newServices.length === 0}
             >
               {isPending ? tc("loading") : tc("save")}
             </Button>
