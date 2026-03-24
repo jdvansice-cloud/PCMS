@@ -25,6 +25,11 @@ export async function middleware(request: NextRequest) {
     return sessionResponse;
   }
 
+  // Skip i18n for auth callback routes (they are not locale-aware)
+  if (pathname.startsWith("/auth")) {
+    return sessionResponse;
+  }
+
   // Apply i18n middleware for locale detection
   return intlMiddleware(request);
 }
