@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { PhoneInput } from "@/components/phone-input";
 
 type OrgInfo = {
   id: string;
@@ -281,12 +282,10 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">{t("phone")}</Label>
-                  <Input
+                  <PhoneInput
                     id="phone"
-                    type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder={t("phonePlaceholder")}
+                    onChange={setPhone}
                   />
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
