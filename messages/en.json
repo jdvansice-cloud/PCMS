@@ -1144,5 +1144,119 @@
     "stayStatus_ACTIVE": "Active",
     "stayStatus_DISCHARGED": "Discharged",
     "stayStatus_TRANSFERRED": "Transferred"
+  },
+  "portal": {
+    "nav": {
+      "dashboard": "Home",
+      "pets": "My Pets",
+      "appointments": "Appointments",
+      "history": "Purchases",
+      "loyalty": "Loyalty",
+      "giftCards": "Gift Cards",
+      "profile": "Profile",
+      "logout": "Log Out"
+    },
+    "login": {
+      "title": "Customer Portal",
+      "description": "Enter your email to access your account",
+      "email": "Email",
+      "emailPlaceholder": "your@email.com",
+      "sendCode": "Send Verification Code",
+      "sendError": "Could not send the code. Please try again.",
+      "invalidCode": "Please enter a valid 6-digit code",
+      "verifyTitle": "Enter Code",
+      "verifyDescription": "We sent a code to {email}",
+      "verify": "Verify",
+      "verifyError": "Invalid code. Please try again.",
+      "changeEmail": "Change email",
+      "resendCode": "Resend code"
+    },
+    "dashboard": {
+      "welcome": "Welcome, {name}",
+      "upcoming": "Upcoming",
+      "upcomingAppointments": "Upcoming Appointments",
+      "noUpcoming": "No upcoming appointments",
+      "viewAll": "View all"
+    },
+    "pets": {
+      "title": "My Pets",
+      "noPets": "No pets registered yet",
+      "notFound": "Pet not found",
+      "backToPets": "Back to My Pets",
+      "allergies": "Allergies",
+      "vaccinations": "Vaccinations",
+      "vaccine": "Vaccine",
+      "date": "Date",
+      "nextDue": "Next Due",
+      "noVaccinations": "No vaccinations recorded",
+      "medicalRecords": "Medical Records",
+      "noRecords": "No medical records",
+      "visit": "Visit",
+      "diagnosis": "Diagnosis",
+      "prescription": "Prescription"
+    },
+    "appointments": {
+      "title": "Appointments",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "noAppointments": "No appointments found",
+      "notFound": "Appointment not found",
+      "backToAppointments": "Back to Appointments",
+      "date": "Date",
+      "duration": "Duration",
+      "veterinarian": "Veterinarian",
+      "pet": "Pet",
+      "reason": "Reason",
+      "notes": "Notes",
+      "medicalRecord": "Medical Record",
+      "diagnosis": "Diagnosis",
+      "prescription": "Prescription",
+      "groomingDetails": "Grooming Details",
+      "completedAt": "Completed"
+    },
+    "history": {
+      "title": "Purchase History",
+      "noPurchases": "No purchases yet",
+      "items": "items",
+      "notFound": "Receipt not found",
+      "backToHistory": "Back to History",
+      "print": "Print",
+      "item": "Item",
+      "qty": "Qty",
+      "price": "Price",
+      "lineTotal": "Total",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "total": "Total",
+      "payments": "Payments"
+    },
+    "loyalty": {
+      "title": "Loyalty Points",
+      "pointsBalance": "Available Points",
+      "transactions": "Transaction History",
+      "noTransactions": "No transactions yet",
+      "date": "Date",
+      "type": "Type",
+      "description": "Description",
+      "points": "Points"
+    },
+    "giftCards": {
+      "title": "Gift Cards",
+      "noCards": "No gift cards",
+      "of": "of",
+      "purchased": "Purchased",
+      "expires": "Expires"
+    },
+    "profile": {
+      "title": "My Profile",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "emailReadOnly": "Email cannot be changed",
+      "phone": "Phone",
+      "address": "Address",
+      "save": "Save Changes",
+      "saved": "Saved"
+    }
   }
 }

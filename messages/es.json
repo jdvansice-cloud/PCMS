@@ -1145,5 +1145,119 @@
     "stayStatus_ACTIVE": "Activa",
     "stayStatus_DISCHARGED": "Dada de Alta",
     "stayStatus_TRANSFERRED": "Transferida"
+  },
+  "portal": {
+    "nav": {
+      "dashboard": "Inicio",
+      "pets": "Mis Mascotas",
+      "appointments": "Citas",
+      "history": "Compras",
+      "loyalty": "Lealtad",
+      "giftCards": "Tarjetas de Regalo",
+      "profile": "Perfil",
+      "logout": "Cerrar Sesión"
+    },
+    "login": {
+      "title": "Portal del Cliente",
+      "description": "Ingresa tu correo para acceder a tu cuenta",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@correo.com",
+      "sendCode": "Enviar Código de Verificación",
+      "sendError": "No se pudo enviar el código. Intenta de nuevo.",
+      "invalidCode": "Ingresa un código válido de 6 dígitos",
+      "verifyTitle": "Ingresa el Código",
+      "verifyDescription": "Enviamos un código a {email}",
+      "verify": "Verificar",
+      "verifyError": "Código inválido. Intenta de nuevo.",
+      "changeEmail": "Cambiar correo",
+      "resendCode": "Reenviar código"
+    },
+    "dashboard": {
+      "welcome": "Bienvenido, {name}",
+      "upcoming": "Próximas",
+      "upcomingAppointments": "Próximas Citas",
+      "noUpcoming": "No tienes citas próximas",
+      "viewAll": "Ver todas"
+    },
+    "pets": {
+      "title": "Mis Mascotas",
+      "noPets": "Aún no tienes mascotas registradas",
+      "notFound": "Mascota no encontrada",
+      "backToPets": "Volver a Mis Mascotas",
+      "allergies": "Alergias",
+      "vaccinations": "Vacunas",
+      "vaccine": "Vacuna",
+      "date": "Fecha",
+      "nextDue": "Próxima Dosis",
+      "noVaccinations": "No hay vacunas registradas",
+      "medicalRecords": "Historial Médico",
+      "noRecords": "No hay registros médicos",
+      "visit": "Visita",
+      "diagnosis": "Diagnóstico",
+      "prescription": "Receta"
+    },
+    "appointments": {
+      "title": "Citas",
+      "upcoming": "Próximas",
+      "past": "Anteriores",
+      "noAppointments": "No se encontraron citas",
+      "notFound": "Cita no encontrada",
+      "backToAppointments": "Volver a Citas",
+      "date": "Fecha",
+      "duration": "Duración",
+      "veterinarian": "Veterinario",
+      "pet": "Mascota",
+      "reason": "Motivo",
+      "notes": "Notas",
+      "medicalRecord": "Registro Médico",
+      "diagnosis": "Diagnóstico",
+      "prescription": "Receta",
+      "groomingDetails": "Detalles de Peluquería",
+      "completedAt": "Completado"
+    },
+    "history": {
+      "title": "Historial de Compras",
+      "noPurchases": "Aún no tienes compras",
+      "items": "artículos",
+      "notFound": "Recibo no encontrado",
+      "backToHistory": "Volver al Historial",
+      "print": "Imprimir",
+      "item": "Artículo",
+      "qty": "Cant.",
+      "price": "Precio",
+      "lineTotal": "Total",
+      "subtotal": "Subtotal",
+      "discount": "Descuento",
+      "total": "Total",
+      "payments": "Pagos"
+    },
+    "loyalty": {
+      "title": "Puntos de Lealtad",
+      "pointsBalance": "Puntos Disponibles",
+      "transactions": "Historial de Transacciones",
+      "noTransactions": "Aún no hay transacciones",
+      "date": "Fecha",
+      "type": "Tipo",
+      "description": "Descripción",
+      "points": "Puntos"
+    },
+    "giftCards": {
+      "title": "Tarjetas de Regalo",
+      "noCards": "No tienes tarjetas de regalo",
+      "of": "de",
+      "purchased": "Comprada",
+      "expires": "Expira"
+    },
+    "profile": {
+      "title": "Mi Perfil",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "email": "Correo electrónico",
+      "emailReadOnly": "El correo no se puede cambiar",
+      "phone": "Teléfono",
+      "address": "Dirección",
+      "save": "Guardar Cambios",
+      "saved": "Guardado"
+    }
   }
 }

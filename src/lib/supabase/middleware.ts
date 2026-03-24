@@ -43,7 +43,9 @@ export async function updateSession(request: NextRequest) {
     pathname.match(/^\/(es|en)\/(login|register)/) ||
     pathname.match(/^\/(es|en)\/auth/) ||
     pathname.startsWith("/book") ||
-    pathname.match(/^\/(es|en)\/book/);
+    pathname.match(/^\/(es|en)\/book/) ||
+    pathname.match(/^(\/(es|en))?\/portal\/[^/]+\/?$/) ||
+    pathname.match(/^(\/(es|en))?\/portal\/[^/]+\/login\/?$/);
 
   // Redirect unauthenticated users to login (except public pages)
   if (!user && !isPublicRoute) {

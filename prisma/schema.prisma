@@ -487,6 +487,7 @@ model StaffTimeOff {
 model Owner {
   id             String   @id @default(cuid())
   organizationId String   @map("organization_id")
+  authId         String?  @unique @map("auth_id")
   firstName      String   @map("first_name")
   lastName       String   @map("last_name")
   cedula         String?
