@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
 import { getCompanyInfo, updateCompanyInfo, uploadLogo, removeLogo } from "../actions";
-import { Camera, Trash2, Loader2 } from "lucide-react";
+import { Camera, Trash2, Loader2, Copy, Check } from "lucide-react";
 
 export default function CompanySettingsPage() {
   const { organization } = useTenant();
@@ -26,6 +26,7 @@ export default function CompanySettingsPage() {
   const [logoLoading, setLogoLoading] = useState(false);
   const [logoError, setLogoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [copied, setCopied] = useState(false);
   const [data, setData] = useState({
     name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "", locale: "es" as string, timezone: "America/Panama" as string,
   });
@@ -159,6 +160,40 @@ export default function CompanySettingsPage() {
               className="hidden"
               onChange={handleLogoUpload}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Login URL Card */}
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <Label className="text-sm font-medium">{t("loginUrl")}</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+            {t("loginUrlDesc")}
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-mono select-all">
+              {typeof window !== "undefined"
+                ? `${window.location.origin}/login/${organization.slug}`
+                : `/login/${organization.slug}`}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/login/${organization.slug}`;
+                navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

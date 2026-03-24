@@ -503,6 +503,8 @@
     "uploadLogo": "Subir Logo",
     "changeLogo": "Cambiar Logo",
     "logoRequirements": "PNG, JPG, WebP o SVG. Máximo 2 MB.",
+    "loginUrl": "URL de Inicio de Sesión",
+    "loginUrlDesc": "Comparte este enlace con tu personal para que inicien sesión en el portal de tu empresa.",
     "branding": "Marca",
     "brandingDesc": "Colores, logo y apariencia del sistema",
     "users": "Usuarios",

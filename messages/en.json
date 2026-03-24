@@ -503,6 +503,8 @@
     "uploadLogo": "Upload Logo",
     "changeLogo": "Change Logo",
     "logoRequirements": "PNG, JPG, WebP, or SVG. Max 2 MB.",
+    "loginUrl": "Staff Login URL",
+    "loginUrlDesc": "Share this link with your staff so they can log in to your company's branded portal.",
     "branding": "Branding",
     "brandingDesc": "Colors, logo, and system appearance",
     "users": "Users",
