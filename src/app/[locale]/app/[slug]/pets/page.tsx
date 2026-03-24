@@ -69,7 +69,7 @@ export default async function PetsPage({
                         <p className="text-sm font-medium">{p.name}</p>
                         <p className="text-xs text-muted-foreground">{p.owner.firstName} {p.owner.lastName}</p>
                       </div>
-                      <Badge className={`text-xs ${SPECIES_COLORS[p.species] ?? ""}`}>{p.species}</Badge>
+                      <Badge className={`text-xs ${SPECIES_COLORS[p.species] ?? ""}`}>{t(`speciesLabels.${p.species}`)}</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -98,11 +98,11 @@ export default async function PetsPage({
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`text-xs ${SPECIES_COLORS[p.species] ?? ""}`}>{p.species}</Badge>
+                      <Badge className={`text-xs ${SPECIES_COLORS[p.species] ?? ""}`}>{t(`speciesLabels.${p.species}`)}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{p.breed || "\u2014"}</TableCell>
                     <TableCell>{p.owner.firstName} {p.owner.lastName}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{p.sex}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{t(`sexLabels.${p.sex}`)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
