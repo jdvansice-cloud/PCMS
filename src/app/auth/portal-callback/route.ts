@@ -63,25 +63,37 @@ export async function GET(request: Request) {
 
     // 3. No owner found — create a new one
     if (!owner) {
-      const metadata = authUser.user_metadata;
+      // Read registration data from cookies (set during registration flow)
+      const regFirstName = cookieStore.get("portal_first_name")?.value;
+      const regLastName = cookieStore.get("portal_last_name")?.value;
+      const regPhone = cookieStore.get("portal_phone")?.value;
+
       owner = await prisma.owner.create({
         data: {
           organizationId: orgId,
           authId: authUser.id,
           email: authUser.email ?? null,
-          firstName: metadata?.firstName || authUser.email?.split("@")[0] || "",
-          lastName: metadata?.lastName || "",
+          firstName: regFirstName
+            ? decodeURIComponent(regFirstName)
+            : authUser.email?.split("@")[0] || "",
+          lastName: regLastName
+            ? decodeURIComponent(regLastName)
+            : "",
+          phone: regPhone ? decodeURIComponent(regPhone) : null,
         },
       });
     }
   }
 
-  // Clear portal cookies
+  // Clear all portal cookies
   const response = NextResponse.redirect(
     new URL(`/portal/${slug}/dashboard`, requestUrl.origin)
   );
   response.cookies.delete("portal_slug");
   response.cookies.delete("portal_org_id");
+  response.cookies.delete("portal_first_name");
+  response.cookies.delete("portal_last_name");
+  response.cookies.delete("portal_phone");
 
   return response;
 }

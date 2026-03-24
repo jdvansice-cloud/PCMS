@@ -1169,7 +1169,18 @@
       "verify": "Verify",
       "verifyError": "Invalid code. Please try again.",
       "changeEmail": "Change email",
-      "resendCode": "Resend code"
+      "resendCode": "Resend code",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Register",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "registerTitle": "Create Account",
+      "registerDescription": "Register to access your pet care portal",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phone": "Phone",
+      "phonePlaceholder": "+507 6000-0000",
+      "registerButton": "Register & Send Code"
     },
     "dashboard": {
       "welcome": "Welcome, {name}",

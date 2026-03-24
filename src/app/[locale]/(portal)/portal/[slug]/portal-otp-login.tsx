@@ -19,12 +19,15 @@ type OrgInfo = {
   fontFamily: string;
 };
 
-type Step = "email" | "otp";
+type Step = "login" | "register" | "otp";
 
 export function PortalOtpLogin({ org }: { org: OrgInfo }) {
   const t = useTranslations("portal.login");
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step>("login");
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,21 +35,49 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
 
   const bgColor = org.sidebarColor ?? org.primaryColor;
 
-  async function handleSendOtp(e: React.FormEvent) {
+  function setCookies(extras?: { firstName?: string; lastName?: string; phone?: string }) {
+    document.cookie = `portal_slug=${org.slug};path=/;max-age=600;samesite=lax`;
+    document.cookie = `portal_org_id=${org.id};path=/;max-age=600;samesite=lax`;
+    if (extras?.firstName) {
+      document.cookie = `portal_first_name=${encodeURIComponent(extras.firstName)};path=/;max-age=600;samesite=lax`;
+    }
+    if (extras?.lastName) {
+      document.cookie = `portal_last_name=${encodeURIComponent(extras.lastName)};path=/;max-age=600;samesite=lax`;
+    }
+    if (extras?.phone) {
+      document.cookie = `portal_phone=${encodeURIComponent(extras.phone)};path=/;max-age=600;samesite=lax`;
+    }
+  }
+
+  async function sendOtp(targetEmail: string) {
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: { shouldCreateUser: true },
+    });
+    return authError;
+  }
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setCookies();
+    const authError = await sendOtp(email);
+    setLoading(false);
+    if (authError) {
+      setError(t("sendError"));
+      return;
+    }
+    setStep("otp");
+  }
 
-    // Set cookies so portal-callback knows which org
-    document.cookie = `portal_slug=${org.slug};path=/;max-age=600;samesite=lax`;
-    document.cookie = `portal_org_id=${org.id};path=/;max-age=600;samesite=lax`;
-
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    setCookies({ firstName, lastName, phone });
+    const authError = await sendOtp(email);
     setLoading(false);
     if (authError) {
       setError(t("sendError"));
@@ -111,13 +142,19 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
   async function handleResend() {
     setError("");
     setLoading(true);
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
+    const authError = await sendOtp(email);
     setLoading(false);
     if (authError) setError(t("sendError"));
+  }
+
+  function switchToRegister() {
+    setStep("register");
+    setError("");
+  }
+
+  function switchToLogin() {
+    setStep("login");
+    setError("");
   }
 
   return (
@@ -147,7 +184,8 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
 
       <Card className="w-full max-w-sm shadow-xl">
         <CardContent className="p-6">
-          {step === "email" ? (
+          {/* ── Login Step ── */}
+          {step === "login" && (
             <>
               <div className="mb-5">
                 <h2 className="text-xl font-bold tracking-tight">
@@ -157,7 +195,7 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
                   {t("description")}
                 </p>
               </div>
-              <form onSubmit={handleSendOtp} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">{t("email")}</Label>
                   <Input
@@ -181,8 +219,105 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
                   {t("sendCode")}
                 </Button>
               </form>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {t("noAccount")}{" "}
+                  <button
+                    type="button"
+                    onClick={switchToRegister}
+                    className="font-medium hover:underline"
+                    style={{ color: org.primaryColor }}
+                  >
+                    {t("registerLink")}
+                  </button>
+                </p>
+              </div>
             </>
-          ) : (
+          )}
+
+          {/* ── Register Step ── */}
+          {step === "register" && (
+            <>
+              <div className="mb-5">
+                <h2 className="text-xl font-bold tracking-tight">
+                  {t("registerTitle")}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t("registerDescription")}
+                </p>
+              </div>
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">{t("firstName")}</Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">{t("lastName")}</Label>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="regEmail">{t("email")}</Label>
+                  <Input
+                    id="regEmail"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("emailPlaceholder")}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">{t("phone")}</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder={t("phonePlaceholder")}
+                  />
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                <Button
+                  type="submit"
+                  className="w-full text-white"
+                  style={{ backgroundColor: org.primaryColor }}
+                  disabled={loading}
+                >
+                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {t("registerButton")}
+                </Button>
+              </form>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {t("hasAccount")}{" "}
+                  <button
+                    type="button"
+                    onClick={switchToLogin}
+                    className="font-medium hover:underline"
+                    style={{ color: org.primaryColor }}
+                  >
+                    {t("loginLink")}
+                  </button>
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ── OTP Step ── */}
+          {step === "otp" && (
             <>
               <div className="mb-5">
                 <h2 className="text-xl font-bold tracking-tight">
@@ -225,7 +360,7 @@ export function PortalOtpLogin({ org }: { org: OrgInfo }) {
                 <div className="flex items-center justify-between text-sm">
                   <button
                     type="button"
-                    onClick={() => { setStep("email"); setOtp(["", "", "", "", "", ""]); setError(""); }}
+                    onClick={() => { setStep("login"); setOtp(["", "", "", "", "", ""]); setError(""); }}
                     className="hover:underline"
                     style={{ color: org.primaryColor }}
                   >

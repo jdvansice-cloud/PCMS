@@ -1170,7 +1170,18 @@
       "verify": "Verificar",
       "verifyError": "Código inválido. Intenta de nuevo.",
       "changeEmail": "Cambiar correo",
-      "resendCode": "Reenviar código"
+      "resendCode": "Reenviar código",
+      "noAccount": "¿No tienes cuenta?",
+      "registerLink": "Regístrate",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "loginLink": "Inicia sesión",
+      "registerTitle": "Crear Cuenta",
+      "registerDescription": "Regístrate para acceder al portal de cuidado de tu mascota",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "phone": "Teléfono",
+      "phonePlaceholder": "+507 6000-0000",
+      "registerButton": "Registrar y Enviar Código"
     },
     "dashboard": {
       "welcome": "Bienvenido, {name}",
