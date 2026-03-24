@@ -41,10 +41,14 @@ export function PortalTenantProvider({
   useEffect(() => {
     const root = document.documentElement;
     const b = data.branding;
+    const fontFamily = b.fontFamily || "Inter";
+
     root.style.setProperty("--color-primary", b.primaryColor);
     root.style.setProperty("--color-secondary", b.secondaryColor);
+    root.style.setProperty("--primary", b.primaryColor);
+    root.style.setProperty("--primary-foreground", "#ffffff");
+    root.style.setProperty("--font-sans", `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`);
     if (b.accentColor) root.style.setProperty("--color-accent", b.accentColor);
-    if (b.fontFamily) root.style.setProperty("--font-family", b.fontFamily);
   }, [data.branding]);
 
   return (

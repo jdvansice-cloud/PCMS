@@ -78,15 +78,16 @@ export default async function PortalProtectedLayout({
 
   const fontFamily = branding.fontFamily || "Inter";
   const googleFontUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@300;400;500;600;700&display=swap`;
+  const fontStack = `"${fontFamily}", ui-sans-serif, system-ui, sans-serif`;
 
   return (
     <NextIntlClientProvider locale={orgLocale} messages={messages}>
       <PortalTenantProvider data={portalData}>
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href={googleFontUrl} />
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background text-sm" style={{ fontFamily: fontStack }}>
           <PortalNav slug={slug} />
-          <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+          <main className="p-5 sm:p-7 lg:p-10 max-w-5xl mx-auto">
             {children}
           </main>
         </div>
