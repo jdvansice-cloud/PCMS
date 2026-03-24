@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 type OrgBranding = {
@@ -14,6 +15,7 @@ type OrgBranding = {
   logo: string | null;
   primaryColor: string;
   secondaryColor: string;
+  sidebarColor: string | null;
   fontFamily: string;
   darkMode: boolean;
   customLoginBg: string | null;
@@ -29,6 +31,8 @@ export function BrandedOtpLogin({ org }: { org: OrgBranding }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const bgColor = org.sidebarColor ?? org.primaryColor;
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -83,7 +87,6 @@ export function BrandedOtpLogin({ org }: { org: OrgBranding }) {
 
   function handleOtpChange(index: number, value: string) {
     if (value.length > 1) {
-      // Handle paste
       const digits = value.replace(/\D/g, "").slice(0, 6).split("");
       const newOtp = [...otp];
       digits.forEach((d, i) => {
@@ -125,73 +128,48 @@ export function BrandedOtpLogin({ org }: { org: OrgBranding }) {
     }
   }
 
-  const brandStyle = {
-    "--brand-primary": org.primaryColor,
-    "--brand-secondary": org.secondaryColor,
-  } as React.CSSProperties;
-
   return (
-    <div className="flex min-h-screen" style={brandStyle}>
-      {/* Left branding panel */}
-      <div
-        className="hidden lg:flex lg:w-1/2 items-center justify-center p-12"
-        style={{
-          background: org.customLoginBg
-            ? `url(${org.customLoginBg}) center/cover no-repeat`
-            : `linear-gradient(135deg, ${org.primaryColor}, ${org.secondaryColor})`,
-        }}
-      >
-        <div className="text-white max-w-md space-y-6 text-center">
-          {org.logo ? (
-            <img
-              src={org.logo}
-              alt={org.name}
-              className="h-24 w-24 rounded-full object-cover mx-auto shadow-lg"
-            />
-          ) : (
-            <div
-              className="h-24 w-24 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto shadow-lg"
-              style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-            >
-              {org.name.charAt(0)}
-            </div>
-          )}
-          <h1 className="text-3xl font-bold">{org.name}</h1>
-        </div>
+    <div
+      className="flex min-h-screen flex-col items-center justify-center p-4"
+      style={{
+        backgroundColor: bgColor,
+        fontFamily: org.fontFamily,
+      }}
+    >
+      {/* Logo + Company Name */}
+      <div className="mb-8 flex flex-col items-center gap-4">
+        {org.logo ? (
+          <img
+            src={org.logo}
+            alt={org.name}
+            className="h-20 w-20 rounded-full object-cover shadow-lg ring-4 ring-white/20"
+          />
+        ) : (
+          <div
+            className="h-20 w-20 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg ring-4 ring-white/20"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+            }}
+          >
+            {org.name.charAt(0)}
+          </div>
+        )}
+        <h1 className="text-2xl font-bold text-white drop-shadow-sm">
+          {org.name}
+        </h1>
       </div>
 
-      {/* Right form */}
-      <div
-        className={`flex flex-1 items-center justify-center p-6 sm:p-12 ${org.darkMode ? "bg-gray-950 text-white" : "bg-white"}`}
-        style={{ fontFamily: org.fontFamily }}
-      >
-        <div className="w-full max-w-md space-y-8">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex flex-col items-center gap-3">
-            {org.logo ? (
-              <img
-                src={org.logo}
-                alt={org.name}
-                className="h-16 w-16 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="h-16 w-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-                style={{ backgroundColor: org.primaryColor }}
-              >
-                {org.name.charAt(0)}
-              </div>
-            )}
-            <h2 className="text-xl font-bold">{org.name}</h2>
-          </div>
-
+      {/* Login Card */}
+      <Card className="w-full max-w-sm shadow-xl">
+        <CardContent className="p-6">
           {step === "email" ? (
             <>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
+              <div className="mb-5">
+                <h2 className="text-xl font-bold tracking-tight">
                   {t("otpTitle")}
                 </h2>
-                <p className={`mt-1 ${org.darkMode ? "text-gray-400" : "text-muted-foreground"}`}>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {t("otpDescription")}
                 </p>
               </div>
@@ -227,32 +205,30 @@ export function BrandedOtpLogin({ org }: { org: OrgBranding }) {
             </>
           ) : (
             <>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
+              <div className="mb-5">
+                <h2 className="text-xl font-bold tracking-tight">
                   {t("otpVerifyTitle")}
                 </h2>
-                <p className={`mt-1 ${org.darkMode ? "text-gray-400" : "text-muted-foreground"}`}>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {t("otpVerifyDescription", { email })}
                 </p>
               </div>
 
-              <form onSubmit={handleVerifyOtp} className="space-y-6">
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
                 <div className="flex justify-center gap-2">
                   {otp.map((digit, i) => (
                     <input
                       key={i}
-                      ref={(el) => { inputRefs.current[i] = el; }}
+                      ref={(el) => {
+                        inputRefs.current[i] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={6}
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-lg focus:outline-none transition-colors ${
-                        org.darkMode
-                          ? "bg-gray-900 border-gray-700 text-white"
-                          : "bg-white border-gray-300"
-                      }`}
+                      className="w-11 h-13 text-center text-xl font-bold border-2 rounded-lg bg-white border-gray-300 focus:outline-none transition-colors"
                       style={{
                         borderColor: digit ? org.primaryColor : undefined,
                       }}
@@ -305,8 +281,8 @@ export function BrandedOtpLogin({ org }: { org: OrgBranding }) {
               </form>
             </>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

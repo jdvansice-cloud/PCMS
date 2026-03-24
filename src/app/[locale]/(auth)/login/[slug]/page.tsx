@@ -20,6 +20,7 @@ export default async function BrandedLoginPage({
         select: {
           primaryColor: true,
           secondaryColor: true,
+          sidebarColor: true,
           fontFamily: true,
           darkMode: true,
           customLoginBg: true,
@@ -38,6 +39,7 @@ export default async function BrandedLoginPage({
         logo: org.logo,
         primaryColor: org.branding?.primaryColor ?? "#14b8a6",
         secondaryColor: org.branding?.secondaryColor ?? "#fb923c",
+        sidebarColor: org.branding?.sidebarColor ?? null,
         fontFamily: org.branding?.fontFamily ?? "Geist",
         darkMode: org.branding?.darkMode ?? false,
         customLoginBg: org.branding?.customLoginBg ?? null,
