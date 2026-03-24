@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -12,7 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useTenant } from "@/lib/tenant-context";
-import { getCompanyInfo, updateCompanyInfo } from "../actions";
+import { getCompanyInfo, updateCompanyInfo, uploadLogo, removeLogo } from "../actions";
+import { Camera, Trash2, Loader2 } from "lucide-react";
 
 export default function CompanySettingsPage() {
   const { organization } = useTenant();
@@ -21,6 +22,10 @@ export default function CompanySettingsPage() {
   const tc = useTranslations("common");
   const tf = useTranslations("form");
   const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoLoading, setLogoLoading] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState({
     name: "", ruc: "", dv: "", phone: "", email: "", address: "", website: "", locale: "es" as string, timezone: "America/Panama" as string,
   });
@@ -39,16 +44,46 @@ export default function CompanySettingsPage() {
           locale: info.locale ?? "es",
           timezone: info.timezone ?? "America/Panama",
         });
+        setLogoUrl(info.logo ?? null);
       }
     });
   }, []);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoError("");
+    setLogoLoading(true);
+
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    const result = await uploadLogo(formData);
+
+    if ("error" in result && result.error) {
+      setLogoError(result.error);
+    } else if ("logoUrl" in result && result.logoUrl) {
+      setLogoUrl(result.logoUrl);
+    }
+
+    setLogoLoading(false);
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleRemoveLogo() {
+    setLogoLoading(true);
+    await removeLogo();
+    setLogoUrl(null);
+    setLogoLoading(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       await updateCompanyInfo(data);
-      // Redirect with the selected locale so the UI language switches immediately
       const prefix = data.locale === "es" ? "" : `/${data.locale}`;
       window.location.href = `${prefix}/app/${organization.slug}/settings`;
     } finally {
@@ -60,6 +95,75 @@ export default function CompanySettingsPage() {
     <div className="space-y-6">
       <PageHeader title={t("company")} backHref={`/app/${organization.slug}/settings`} />
 
+      {/* Logo Upload Card */}
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <Label className="text-sm font-medium">{t("companyLogo")}</Label>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+            {t("companyLogoDesc")}
+          </p>
+          <div className="flex items-center gap-4">
+            {/* Logo preview */}
+            <div
+              className="relative h-20 w-20 rounded-full border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {logoLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={data.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Camera className="h-6 w-6 text-muted-foreground/50" />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={logoLoading}
+                >
+                  {logoUrl ? t("changeLogo") : t("uploadLogo")}
+                </Button>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveLogo}
+                    disabled={logoLoading}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("logoRequirements")}
+              </p>
+              {logoError && (
+                <p className="text-xs text-destructive">{logoError}</p>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Company Info Card */}
       <Card>
         <CardContent className="p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-4">

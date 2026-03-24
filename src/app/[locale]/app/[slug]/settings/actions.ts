@@ -23,6 +23,7 @@ export async function getCompanyInfo() {
       timezone: true,
       currency: true,
       locale: true,
+      logo: true,
     },
   });
 }
@@ -80,6 +81,80 @@ export async function updateCompanyInfo(data: {
   const newLocale = data.locale || "es";
   const cookieStore = await cookies();
   cookieStore.set("NEXT_LOCALE", newLocale, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true };
+}
+
+export async function uploadLogo(formData: FormData) {
+  const { user, organizationId, slug } = await getCurrentUser();
+  const file = formData.get("logo") as File | null;
+  if (!file || file.size === 0) return { error: "No file provided" };
+
+  // Validate
+  const maxSize = 2 * 1024 * 1024; // 2 MB
+  if (file.size > maxSize) return { error: "File too large (max 2MB)" };
+  const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+  if (!allowed.includes(file.type)) return { error: "Invalid file type" };
+
+  const ext = file.name.split(".").pop() ?? "png";
+  const path = `logos/${organizationId}/logo.${ext}`;
+
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabase.storage
+    .from("public-assets")
+    .upload(path, buffer, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: urlData } = supabase.storage
+    .from("public-assets")
+    .getPublicUrl(path);
+
+  // Add cache-buster to force refresh
+  const logoUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { logo: logoUrl },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Organization",
+    entityId: organizationId,
+    changes: { logo: { old: null, new: logoUrl } },
+  });
+
+  revalidatePath(`/app/${slug}/settings`);
+  return { success: true, logoUrl };
+}
+
+export async function removeLogo() {
+  const { user, organizationId, slug } = await getCurrentUser();
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { logo: null },
+  });
+
+  await createAuditLog({
+    organizationId,
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Organization",
+    entityId: organizationId,
+    changes: { logo: { old: "removed", new: null } },
+  });
 
   revalidatePath(`/app/${slug}/settings`);
   return { success: true };
