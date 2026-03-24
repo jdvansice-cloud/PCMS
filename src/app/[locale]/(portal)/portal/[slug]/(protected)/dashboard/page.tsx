@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePortalTenant } from "@/lib/portal-tenant-context";
 import { getPortalDashboard } from "../actions";
-import { PawPrint, CalendarDays, Star, Gift, ChevronRight } from "lucide-react";
+import { PawPrint, CalendarDays, Star, ChevronRight } from "lucide-react";
 
 type DashboardData = Awaited<ReturnType<typeof getPortalDashboard>>;
 
@@ -32,7 +32,7 @@ export default function PortalDashboardPage() {
       </h1>
 
       {/* Quick stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={PawPrint}
           label={ct("pets")}
@@ -50,12 +50,6 @@ export default function PortalDashboardPage() {
           label={ct("loyalty")}
           value={data.loyaltyBalance.toString()}
           href={`${base}/loyalty`}
-        />
-        <StatCard
-          icon={Gift}
-          label={ct("giftCards")}
-          value={data.giftCardCount.toString()}
-          href={`${base}/gift-cards`}
         />
       </div>
 

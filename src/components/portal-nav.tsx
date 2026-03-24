@@ -11,7 +11,6 @@ import {
   CalendarDays,
   Receipt,
   Star,
-  Gift,
   User,
   LayoutDashboard,
   LogOut,
@@ -34,7 +33,6 @@ export function PortalNav({ slug }: { slug: string }) {
     { href: `${base}/appointments`, label: t("appointments"), icon: CalendarDays },
     { href: `${base}/history`, label: t("history"), icon: Receipt },
     { href: `${base}/loyalty`, label: t("loyalty"), icon: Star },
-    { href: `${base}/gift-cards`, label: t("giftCards"), icon: Gift },
     { href: `${base}/profile`, label: t("profile"), icon: User },
   ];
 
