@@ -53,10 +53,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login/register to root (which does user lookup)
+  // But don't redirect branded login pages (/login/[slug]) — they handle their own flow
   if (user && (pathname.match(/\/(login|register)$/) || pathname === "/")) {
-    // Don't redirect root — let the page component handle it
-    if (pathname !== "/" && !pathname.match(/^\/(es|en)$/)) {
-      // Only redirect login/register pages, not root
+    const isBrandedLogin = pathname.match(/\/login\/[^/]+$/);
+    if (!isBrandedLogin && pathname !== "/" && !pathname.match(/^\/(es|en)$/)) {
       if (pathname.match(/\/(login|register)$/)) {
         const url = request.nextUrl.clone();
         url.pathname = "/";

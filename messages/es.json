@@ -71,7 +71,19 @@
       "patients": "Pacientes",
       "grooming": "Peluquería",
       "shop": "Tienda"
-    }
+    },
+    "otpTitle": "Iniciar sesión",
+    "otpDescription": "Ingresa tu correo y te enviaremos un código de verificación",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "sendOtp": "Enviar código de verificación",
+    "otpVerifyTitle": "Ingresa el código de verificación",
+    "otpVerifyDescription": "Enviamos un código de 6 dígitos a {email}",
+    "verifyOtp": "Verificar",
+    "changeEmail": "Cambiar correo",
+    "resendOtp": "Reenviar código",
+    "otpSendError": "No se pudo enviar el código. Verifica tu correo e intenta de nuevo.",
+    "otpVerifyError": "Código inválido o expirado. Intenta de nuevo.",
+    "otpInvalid": "Ingresa el código completo de 6 dígitos"
   },
   "nav": {
     "dashboard": "Dashboard",

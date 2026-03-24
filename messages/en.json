@@ -71,7 +71,19 @@
       "patients": "Patients",
       "grooming": "Grooming",
       "shop": "Shop"
-    }
+    },
+    "otpTitle": "Sign in",
+    "otpDescription": "Enter your email and we'll send you a verification code",
+    "emailPlaceholder": "you@example.com",
+    "sendOtp": "Send verification code",
+    "otpVerifyTitle": "Enter verification code",
+    "otpVerifyDescription": "We sent a 6-digit code to {email}",
+    "verifyOtp": "Verify",
+    "changeEmail": "Change email",
+    "resendOtp": "Resend code",
+    "otpSendError": "Could not send verification code. Please check your email and try again.",
+    "otpVerifyError": "Invalid or expired code. Please try again.",
+    "otpInvalid": "Please enter the full 6-digit code"
   },
   "nav": {
     "dashboard": "Dashboard",
