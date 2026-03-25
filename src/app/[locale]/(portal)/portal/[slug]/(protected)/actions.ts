@@ -57,6 +57,40 @@ export async function getPortalDashboard() {
 
 // ── Pets ─────────────────────────────────────────────────────
 
+export async function createMyPet(data: {
+  name: string;
+  species: "DOG" | "CAT" | "BIRD" | "REPTILE" | "RODENT" | "OTHER";
+  sex: "MALE" | "FEMALE" | "UNKNOWN";
+  size: "SMALL" | "MEDIUM" | "LARGE" | "XL";
+  color: string;
+  breed?: string | null;
+  dateOfBirth?: string | null;
+  weight?: number | null;
+  allergies?: string | null;
+  microchipId?: string | null;
+}) {
+  const { owner, organizationId } = await getCurrentPortalUser();
+
+  const pet = await prisma.pet.create({
+    data: {
+      organizationId,
+      ownerId: owner.id,
+      name: data.name,
+      species: data.species,
+      sex: data.sex,
+      size: data.size,
+      color: data.color,
+      breed: data.breed ?? null,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      weight: data.weight ?? null,
+      allergies: data.allergies ?? null,
+      microchipId: data.microchipId ?? null,
+    },
+  });
+
+  return { id: pet.id };
+}
+
 export async function getMyPets() {
   const { owner, organizationId } = await getCurrentPortalUser();
 
